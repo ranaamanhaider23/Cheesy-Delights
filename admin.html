@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cheesy Delights - Orders Dashboard</title>
+<style>
+    :root {
+        --bg-color: #0d0d0d;
+        --card-bg: #1a1a1a;
+        --accent-yellow: #ffb703;
+        --accent-gold: #fb8500;
+        --text-light: #f8f9fa;
+        --text-muted: #a0a0a0;
+        --border-color: #2c2c2c;
+        --green: #25d366;
+        --red: #ff4d4d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-light); min-height: 100vh; }
+
+    header {
+        background: #000;
+        border-bottom: 2px solid var(--accent-yellow);
+        text-align: center;
+        padding: 15px;
+    }
+    .brand-title { color: var(--accent-yellow); font-size: 1.6rem; font-weight: bold; }
+    .sub-slogan { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+    /* ---------- PIN Lock Screen ---------- */
+    #lock-screen {
+        max-width: 320px; margin: 60px auto; text-align: center;
+        background: var(--card-bg); border: 1px solid var(--border-color);
+        border-radius: 10px; padding: 24px;
+    }
+    #lock-screen input {
+        width: 100%; background: #000; border: 1px solid var(--border-color);
+        color: #fff; padding: 10px; border-radius: 6px; font-size: 1rem;
+        text-align: center; letter-spacing: 4px; margin: 14px 0;
+    }
+    #lock-screen button {
+        width: 100%; background-color: var(--accent-yellow); color: #000;
+        border: none; padding: 10px; border-radius: 6px; font-weight: bold;
+        cursor: pointer; font-size: 0.95rem;
+    }
+    .lock-error { color: var(--red); font-size: 0.8rem; margin-top: 8px; display: none; }
+
+    /* ---------- Dashboard ---------- */
+    #dashboard { display: none; }
+
+    .top-bar {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+    }
+    .stats { font-size: 0.85rem; color: var(--text-muted); }
+    .stats span { color: var(--accent-yellow); font-weight: bold; }
+
+    .tab-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .tab-btn {
+        background: transparent; border: 1px solid var(--border-color); color: var(--text-light);
+        padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.8rem;
+    }
+    .tab-btn.active { background-color: var(--accent-yellow); color: #000; font-weight: bold; border-color: var(--accent-yellow); }
+
+    .refresh-btn {
+        background: transparent; border: 1px solid var(--accent-yellow); color: var(--accent-yellow);
+        padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+    }
+    .refresh-btn:hover { background: var(--accent-yellow); color: #000; }
+
+    #orders-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;
+    }
+
+    .order-card {
+        background-color: var(--card-bg); border: 1px solid var(--border-color);
+        border-left: 4px solid var(--accent-yellow); border-radius: 8px; padding: 14px;
+    }
+    .order-card.completed { border-left-color: var(--green); opacity: 0.85; }
+
+    .oc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .oc-id { font-weight: bold; color: var(--accent-yellow); font-size: 0.95rem; }
+    .order-status-badge {
+        font-size: 0.68rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; border: 1px solid;
+    }
+    .order-status-badge.pending { color: var(--accent-yellow); border-color: var(--accent-yellow); }
+    .order-status-badge.completed { color: var(--green); border-color: var(--green); }
+
+    .oc-customer { font-size: 0.85rem; color: var(--text-light); margin-bottom: 6px; }
+    .oc-customer b { color: var(--accent-yellow); }
+
+    .oc-items { list-style: none; font-size: 0.85rem; margin: 8px 0; }
+    .oc-items li {
+        display: flex; justify-content: space-between; padding: 3px 0;
+        border-bottom: 1px dashed var(--border-color);
+    }
+
+    .oc-note { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; font-style: italic; }
+
+    .oc-total {
+        display: flex; justify-content: space-between; font-weight: bold; color: var(--accent-yellow);
+        font-size: 0.95rem; margin: 8px 0; padding-top: 6px; border-top: 1px solid var(--border-color);
+    }
+    .oc-time { font-size: 0.68rem; color: var(--text-muted); margin-bottom: 8px; }
+
+    .oc-actions { display: flex; gap: 8px; }
+    .oc-actions button {
+        flex: 1; padding: 8px; border-radius: 5px; font-weight: bold; font-size: 0.8rem;
+        cursor: pointer; border: 1px solid;
+    }
+    .done-btn { background-color: var(--green); color: #000; border-color: var(--green); }
+    .done-btn:hover { opacity: 0.85; }
+    .undo-btn { background: transparent; color: var(--text-muted); border-color: var(--border-color); }
+    .del-btn { background: transparent; color: var(--red); border-color: var(--red); }
+    .del-btn:hover { background: var(--red); color: #fff; }
+
+    .empty-state {
+        text-align: center; color: var(--text-muted); padding: 60px 20px;
+        font-size: 0.95rem; grid-column: 1 / -1;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <div class="brand-title">🧀 Cheesy Delights</div>
+    <div class="sub-slogan">Orders Dashboard</div>
+</header>
+
+<div class="container">
+
+    <!-- PIN Lock Screen -->
+    <div id="lock-screen">
+        <div style="color:var(--accent-yellow); font-weight:bold; margin-bottom:6px;">🔒 Admin Access</div>
+        <div style="font-size:0.8rem; color:var(--text-muted);">Orders dekhne ke liye PIN enter karein</div>
+        <input type="password" id="pin-input" placeholder="Enter PIN" inputmode="numeric">
+        <button onclick="checkPin()">Unlock</button>
+        <div class="lock-error" id="lock-error">Wrong PIN!</div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard">
+        <div class="top-bar">
+            <div class="stats">Pending: <span id="pending-count">0</span> &nbsp;|&nbsp; Completed: <span id="completed-count">0</span></div>
+            <button class="refresh-btn" onclick="renderOrders()">⟳ Refresh</button>
+        </div>
+
+        <div class="tab-row">
+            <button class="tab-btn active" id="tab-pending" onclick="switchTab('pending')">Active Orders</button>
+            <button class="tab-btn" id="tab-completed" onclick="switchTab('completed')">Completed</button>
+        </div>
+
+        <div id="orders-grid"></div>
+    </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+    var firebaseConfig = {
+        apiKey: "AIzaSyD39mMctcOOwPqjl82urbwiudgja0WBJss",
+        authDomain: "cheesy-delights.firebaseapp.com",
+        projectId: "cheesy-delights",
+        storageBucket: "cheesy-delights.firebasestorage.app",
+        messagingSenderId: "1064708325212",
+        appId: "1:1064708325212:web:42da308ee313122d318b99"
+    };
+    var db = null;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+    } catch (e) {
+        console.warn('Firebase could not initialize — dashboard will run on last-known local data only.', e);
+    }
+</script>
+
+<script>
+    // Must match the exact keys used in index.html
+    var ORDERS_KEY = 'cheesy_orders_log';
+    var PIN_KEY = 'cheesy_admin_pin';
+
+    var currentTab = 'pending';
+    var liveOrders = [];
+    var ordersListenerStarted = false;
+
+    function getAdminPin() {
+        var raw = localStorage.getItem(PIN_KEY);
+        return raw || '1234';
+    }
+
+    function checkPin() {
+        var pin = document.getElementById('pin-input').value;
+        if (pin === getAdminPin()) {
+            document.getElementById('lock-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            startOrdersListener();
+        } else {
+            document.getElementById('lock-error').style.display = 'block';
+        }
+        document.getElementById('pin-input').value = '';
+    }
+
+    document.getElementById('pin-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') checkPin();
+    });
+
+    // Keep the PIN itself in sync too, so a PIN changed on another device
+    // (or from index.html's Settings panel) unlocks this dashboard as well.
+    if (db) {
+        db.collection('settings').doc('general').onSnapshot(function(doc) {
+            if (doc.exists && doc.data().adminPin) {
+                localStorage.setItem(PIN_KEY, doc.data().adminPin);
+            }
+        }, function(err) { console.warn('PIN sync error (offline?)', err); });
+    }
+
+    function startOrdersListener() {
+        if (ordersListenerStarted) { renderOrders(); return; }
+        ordersListenerStarted = true;
+
+        if (!db) {
+            console.warn('Firebase unavailable — showing last-known local copy of orders.');
+            var rawFallback = localStorage.getItem(ORDERS_KEY);
+            liveOrders = rawFallback ? JSON.parse(rawFallback) : [];
+            renderOrders();
+            return;
+        }
+
+        db.collection('orders').orderBy('timestamp', 'desc').onSnapshot(function(snap) {
+            var orders = [];
+            snap.forEach(function(doc) { orders.push(doc.data()); });
+            liveOrders = orders;
+            try { localStorage.setItem(ORDERS_KEY, JSON.stringify(orders)); } catch (e) {}
+            renderOrders();
+        }, function(err) {
+            console.warn('Orders sync error (offline?), falling back to last known copy', err);
+            var raw = localStorage.getItem(ORDERS_KEY);
+            liveOrders = raw ? JSON.parse(raw) : [];
+            renderOrders();
+        });
+    }
+
+    function getOrders() {
+        return liveOrders;
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.innerText = str;
+        return div.innerHTML;
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.getElementById('tab-pending').classList.toggle('active', tab === 'pending');
+        document.getElementById('tab-completed').classList.toggle('active', tab === 'completed');
+        renderOrders();
+    }
+
+    function renderOrders() {
+        var all = getOrders();
+        var pending = all.filter(function(o) { return o.status !== 'completed'; });
+        var completed = all.filter(function(o) { return o.status === 'completed'; });
+
+        document.getElementById('pending-count').textContent = pending.length;
+        document.getElementById('completed-count').textContent = completed.length;
+
+        var list = currentTab === 'pending' ? pending : completed;
+        var grid = document.getElementById('orders-grid');
+
+        if (list.length === 0) {
+            grid.innerHTML = '<div class="empty-state">' +
+                (currentTab === 'pending' ? 'Abhi koi active order nahi hai 🍕' : 'Koi completed order nahi hai.') +
+                '</div>';
+            return;
+        }
+
+        // Newest first
+        list.sort(function(a, b) { return b.timestamp - a.timestamp; });
+
+        grid.innerHTML = list.map(function(o) {
+            var isDone = o.status === 'completed';
+            var itemsHtml = o.items.map(function(it) {
+                return '<li><span>' + it.qty + ' \u00d7 ' + escapeHtml(it.name) + '</span><span>Rs. ' + (it.price * it.qty) + '</span></li>';
+            }).join('');
+
+            return '<div class="order-card' + (isDone ? ' completed' : '') + '">' +
+                '<div class="oc-top">' +
+                    '<span class="oc-id">Order #' + o.id + '</span>' +
+                    '<span class="order-status-badge ' + (isDone ? 'completed' : 'pending') + '">' + (isDone ? 'COMPLETED' : 'PENDING') + '</span>' +
+                '</div>' +
+                '<div class="oc-customer"><b>' + escapeHtml(o.name) + '</b> &middot; ' + escapeHtml(o.phone) + '<br>' + escapeHtml(o.address) + '</div>' +
+                (o.note ? '<div class="oc-note">Note: ' + escapeHtml(o.note) + '</div>' : '') +
+                '<ul class="oc-items">' + itemsHtml + '</ul>' +
+                '<div class="oc-total"><span>Total' + (o.discount ? ' (' + o.discount + '% off)' : '') + '</span><span>Rs. ' + o.total + '</span></div>' +
+                '<div class="oc-time">' + new Date(o.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) + '</div>' +
+                '<div class="oc-actions">' +
+                    (isDone ?
+                        '<button class="undo-btn" onclick="toggleStatus(' + o.id + ')">\u21ba Mark Pending</button>' :
+                        '<button class="done-btn" onclick="toggleStatus(' + o.id + ')">\u2713 Mark Done</button>'
+                    ) +
+                    '<button class="del-btn" onclick="deleteOrder(' + o.id + ')">Delete</button>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    function toggleStatus(id) {
+        if (!db) { alert('Internet/Firebase available nahi — status change nahi ho saka.'); return; }
+        var orders = getOrders();
+        var newStatus = 'pending';
+        for (var i = 0; i < orders.length; i++) {
+            if (String(orders[i].id) === String(id)) {
+                newStatus = orders[i].status === 'completed' ? 'pending' : 'completed';
+                break;
+            }
+        }
+        db.collection('orders').doc(String(id)).update({ status: newStatus }).catch(function(e) {
+            console.warn(e);
+        });
+        // The live listener will re-render automatically once the write lands.
+    }
+
+    function deleteOrder(id) {
+        if (!db) { alert('Internet/Firebase available nahi — delete nahi ho saka.'); return; }
+        if (!confirm('Ye order record delete kar dein?')) return;
+        db.collection('orders').doc(String(id)).delete().catch(function(e) {
+            console.warn(e);
+        });
+        // The live listener will re-render automatically once the delete lands.
+    }
+</script>
+
+</body>
+</html>
