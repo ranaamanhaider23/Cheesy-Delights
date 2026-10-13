@@ -1044,6 +1044,15 @@
             { id: 47, cat: 'wings', name: 'Oven Back Wings', prices: { "6 Pcs": 420, "12 Pcs": 690 } }
         ];
 
+        // Firestore does NOT guarantee the key order of a map field (sizes could come
+        // back in a different order than they were saved in, e.g. "Medium" jumping
+        // above "Small"). So every item with size variants also carries an explicit
+        // priceOrder array — the real source of truth for display order — alongside
+        // the prices object. Derived once here from each item's own key order.
+        defaultMenuItems.forEach(function (it) {
+            if (it.prices && !it.priceOrder) it.priceOrder = Object.keys(it.prices);
+        });
+
         var savedMenu = localStorage.getItem(MENU_KEY);
         var menuItems = savedMenu ? JSON.parse(savedMenu) : defaultMenuItems.slice();
         var menuSynced = false;
@@ -1618,7 +1627,13 @@
 
                 if (item.prices) {
                     html += '<select class="variant-select" id="sel-' + item.id + '"' + (isOOS ? ' disabled' : '') + '>';
-                    for (var variant in item.prices) {
+                    // Use the saved display order (priceOrder) rather than the object's
+                    // own key order — Firestore doesn't guarantee map key order survives
+                    // a round-trip, which is what made sizes swap rows after a refresh.
+                    var custVOrder = (item.priceOrder && item.priceOrder.length) ? item.priceOrder : Object.keys(item.prices);
+                    for (var cvi = 0; cvi < custVOrder.length; cvi++) {
+                        var variant = custVOrder[cvi];
+                        if (!(variant in item.prices)) continue;
                         html += '<option value="' + escapeHtml(variant) + ':' + item.prices[variant] + '">' + escapeHtml(variant) + ' - Rs. ' + item.prices[variant] + '</option>';
                     }
                     html += '</select></div>';
@@ -2374,10 +2389,11 @@
 
                 if (item.prices) {
                     html += '<div class="admin-variant-grid" id="variant-grid-' + item.id + '">';
-                    var vIdx = 0;
-                    for (var vKey in item.prices) {
+                    var vOrder = (item.priceOrder && item.priceOrder.length) ? item.priceOrder : Object.keys(item.prices);
+                    for (var vIdx = 0; vIdx < vOrder.length; vIdx++) {
+                        var vKey = vOrder[vIdx];
+                        if (!(vKey in item.prices)) continue;
                         html += variantRowHtml(item.id, vIdx, vKey, item.prices[vKey]);
-                        vIdx++;
                     }
                     html += '</div>';
                     html += '<button type="button" class="reset-btn add-size-btn" onclick="addVariantRow(' + item.id + ')">+ Add Size</button>';
@@ -2567,7 +2583,10 @@
             for (var i = 0; i < items.length; i++) {
                 var it = items[i];
                 if (it.prices) {
-                    for (var vName in it.prices) {
+                    var dcOrder = (it.priceOrder && it.priceOrder.length) ? it.priceOrder : Object.keys(it.prices);
+                    for (var dci = 0; dci < dcOrder.length; dci++) {
+                        var vName = dcOrder[dci];
+                        if (!(vName in it.prices)) continue;
                         html += '<option value="' + it.id + '::' + escapeHtml(vName) + '">' + escapeHtml(it.name) + ' (' + escapeHtml(vName) + ') \u2014 Rs.' + it.prices[vName] + '</option>';
                     }
                 } else {
@@ -2628,6 +2647,7 @@
             if (hasVariants) {
                 var rows = document.getElementById('new-item-variant-rows').children;
                 var prices = {};
+                var priceOrder = [];
                 var validCount = 0;
                 for (var i = 0; i < rows.length; i++) {
                     var inputs = rows[i].querySelectorAll('input');
@@ -2635,6 +2655,7 @@
                     var vPrice = parseInt(inputs[1].value);
                     if (vName && !isNaN(vPrice) && vPrice >= 0) {
                         prices[vName] = vPrice;
+                        priceOrder.push(vName);
                         validCount++;
                     }
                 }
@@ -2643,6 +2664,7 @@
                     return;
                 }
                 newItem.prices = prices;
+                newItem.priceOrder = priceOrder;
             } else {
                 var price = parseInt(document.getElementById('new-item-price').value);
                 if (isNaN(price) || price < 0) {
@@ -2736,6 +2758,10 @@
                     var grid = document.getElementById('variant-grid-' + item.id);
                     if (grid) {
                         var newPrices = {};
+                        var newPriceOrder = [];
+                        // querySelectorAll returns rows in their on-screen top-to-bottom
+                        // order, which is exactly the display order we want to keep —
+                        // that's what gets saved into priceOrder below.
                         var rows = grid.querySelectorAll('.admin-variant-row');
                         rows.forEach(function (row) {
                             var vidx = row.getAttribute('data-vidx');
@@ -2745,9 +2771,15 @@
                             // Colons are used internally to separate "size:price" when a
                             // customer picks a variant, so strip any the admin types in.
                             var lbl = labelInp.value.trim().replace(/:/g, '');
-                            if (lbl) newPrices[lbl] = parseInt(priceInp.value) || 0;
+                            if (lbl) {
+                                newPrices[lbl] = parseInt(priceInp.value) || 0;
+                                newPriceOrder.push(lbl);
+                            }
                         });
-                        if (Object.keys(newPrices).length > 0) item.prices = newPrices;
+                        if (Object.keys(newPrices).length > 0) {
+                            item.prices = newPrices;
+                            item.priceOrder = newPriceOrder;
+                        }
                     }
                 } else {
                     var inpSingle = document.getElementById('price-input-' + item.id);
