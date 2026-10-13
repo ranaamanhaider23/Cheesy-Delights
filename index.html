@@ -95,6 +95,16 @@
         .card {
             background-color: var(--card-bg); border: 1px solid var(--border-color);
             border-radius: 8px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .deep-link-highlight {
+            border-color: var(--accent-yellow, #ffb703) !important;
+            box-shadow: 0 0 0 3px var(--accent-yellow, #ffb703), 0 0 18px rgba(255, 183, 3, 0.6);
+            animation: deepLinkPulse 1.3s ease-in-out 2;
+        }
+        @keyframes deepLinkPulse {
+            0%, 100% { box-shadow: 0 0 0 3px var(--accent-yellow, #ffb703), 0 0 18px rgba(255, 183, 3, 0.6); }
+            50% { box-shadow: 0 0 0 5px var(--accent-yellow, #ffb703), 0 0 28px rgba(255, 183, 3, 0.9); }
         }
 
         .item-title { font-size: 0.95rem; font-weight: bold; color: var(--text-light); margin-bottom: 5px; }
@@ -185,6 +195,21 @@
             background: rgba(0,0,0,0.85); z-index: 2000; align-items: flex-start; justify-content: center; padding: 15px;
             overflow-y: auto;
         }
+
+        /* ---------- Full-page splash screens (welcome / thank-you) ---------- */
+        .splash-screen {
+            display: none; position: fixed; inset: 0; z-index: 4000;
+            background: radial-gradient(ellipse at center, #1a1a1a 0%, #000 80%);
+            align-items: center; justify-content: center; text-align: center; padding: 24px;
+            opacity: 0; transition: opacity 0.35s ease;
+        }
+        .splash-screen.show { display: flex; }
+        .splash-screen.visible { opacity: 1; }
+        .splash-inner { max-width: 420px; }
+        .splash-emoji { font-size: 4.5rem; margin-bottom: 10px; animation: heroFloat 3.2s ease-in-out infinite; }
+        .splash-logo { font-size: clamp(2rem, 9vw, 3.2rem); }
+        .splash-text { color: #fff; font-size: 1rem; margin-top: 18px; line-height: 1.6; }
+        .splash-screen .hero-cta { margin-top: 26px; }
 
         .modal-content {
             background: var(--card-bg); border: 2px solid var(--accent-yellow);
@@ -877,6 +902,26 @@
         </div>
     </div>
 
+    <!-- Welcome splash: full-page greeting with the Cheesy Delights logo, shown as soon as the site opens -->
+    <div class="splash-screen" id="welcome-splash">
+        <div class="splash-inner">
+            <div class="splash-emoji">🧀</div>
+            <div class="hero-logo splash-logo">Cheesy Delights</div>
+            <p class="splash-text">Welcome! Enjoy hot &amp; cheesy food made just for you 😋</p>
+            <button class="hero-cta" onclick="closeSplash('welcome-splash')">Explore Menu</button>
+        </div>
+    </div>
+
+    <!-- Thank-you splash: full-page confirmation shown right after a customer places an order -->
+    <div class="splash-screen" id="thankyou-splash">
+        <div class="splash-inner">
+            <div class="splash-emoji">🎉</div>
+            <div class="hero-logo splash-logo" style="font-size:clamp(1.6rem, 7vw, 2.6rem);">Thank You!</div>
+            <p class="splash-text" id="thankyou-message">Your order has been received. We're preparing it fresh and will reach out soon.<br><br>&mdash; From Cheesy Delights ❤️</p>
+            <button class="hero-cta" onclick="closeSplash('thankyou-splash')">Okay</button>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script>
@@ -1520,6 +1565,7 @@
                 var card = document.createElement('div');
                 var isOOS = !!item.outOfStock;
                 card.className = 'card' + (isOOS ? ' card-oos' : '');
+                card.setAttribute('data-item-id', item.id);
 
                 var starHtml = item.fav ? '<span class="fav-star">&#9733;</span>' : '';
                 var dealDisplay = (item.cat === 'deals') ? getDealDisplay(item) : null;
@@ -1561,6 +1607,57 @@
 
             if (shown === 0) {
                 grid.innerHTML = '<div class="no-results">No items found. Try a different search or category.</div>';
+            }
+
+            tryHighlightPendingItem();
+        }
+
+        // ---------- Deep-link: open a specific item from menu.html ----------
+        // menu.html links each item card to index.html?item=<id> so a customer who
+        // taps an item there lands here with that exact item scrolled into view and
+        // glowing, ready to order — instead of having to search for it again.
+        var pendingHighlightItemId = (function () {
+            var params = new URLSearchParams(window.location.search);
+            var raw = params.get('item');
+            if (!raw) return null;
+            history.replaceState(null, '', window.location.pathname);
+            var n = parseInt(raw, 10);
+            return isNaN(n) ? raw : n;
+        })();
+        var highlightAttemptsLeft = 20; // keep retrying briefly while Firestore data is still loading
+
+        function tryHighlightPendingItem() {
+            if (pendingHighlightItemId === null) return;
+
+            // Make sure the item isn't hidden by a category filter or search box.
+            var itemExists = false;
+            for (var i = 0; i < menuItems.length; i++) {
+                if (menuItems[i].id === pendingHighlightItemId) { itemExists = true; break; }
+            }
+            if (itemExists && currentCategory !== 'all') {
+                var allBtn = document.querySelector('.nav-container .nav-btn');
+                if (allBtn) filterItems(allBtn, 'all');
+                return; // filterItems() re-renders, which calls this function again
+            }
+
+            var card = document.querySelector('[data-item-id="' + pendingHighlightItemId + '"]');
+            if (card) {
+                var id = pendingHighlightItemId;
+                pendingHighlightItemId = null;
+                setTimeout(function () {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('deep-link-highlight');
+                    setTimeout(function () { card.classList.remove('deep-link-highlight'); }, 2600);
+                }, 150);
+                return;
+            }
+
+            // Not found yet (Firestore data may still be loading) — try again shortly.
+            highlightAttemptsLeft--;
+            if (highlightAttemptsLeft > 0) {
+                setTimeout(tryHighlightPendingItem, 400);
+            } else {
+                pendingHighlightItemId = null;
             }
         }
 
@@ -2000,6 +2097,12 @@
 
                 closeModal('customer-modal');
                 setCartExpanded(false);
+
+                var thankyouMsgEl = document.getElementById('thankyou-message');
+                if (thankyouMsgEl) {
+                    thankyouMsgEl.innerHTML = 'Your order <b>#' + orderId + '</b> has been received. We\'re preparing it fresh and will reach out soon.<br><br>&mdash; From Cheesy Delights ❤️';
+                }
+                setTimeout(function () { openSplash('thankyou-splash'); }, 300);
 
                 // discount is one-time use — clear it once the order is placed
                 discountPercent = 0;
@@ -2763,6 +2866,18 @@
         }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
+        // ---------- Full-page splash screens ----------
+        function openSplash(id) {
+            var el = document.getElementById(id);
+            el.classList.add('show');
+            setTimeout(function () { el.classList.add('visible'); }, 20);
+        }
+        function closeSplash(id) {
+            var el = document.getElementById(id);
+            el.classList.remove('visible');
+            setTimeout(function () { el.classList.remove('show'); }, 350);
+        }
+
         document.querySelectorAll('.modal').forEach(function(modalEl) {
             modalEl.addEventListener('click', function(e) {
                 if (e.target === modalEl) {
@@ -2830,6 +2945,7 @@
         // an owner device (saved in localStorage), so the button then stays visible
         // on that device going forward — customers never see it at all.
         var OWNER_DEVICE_KEY = 'cheesy_is_owner_device';
+        var suppressWelcomePopup = false;
 
         (function() {
             var params = new URLSearchParams(window.location.search);
@@ -2848,6 +2964,7 @@
             if (isResetLink) {
                 openModal('admin-modal');
                 resetAdminCredentials();
+                suppressWelcomePopup = true;
             }
         })();
 
@@ -2998,6 +3115,17 @@
             }
         } catch (e) {
             console.warn('Firestore sync could not start — running on local data only.', e);
+        }
+
+        // Greet every visitor with a Cheesy Delights welcome popup when the site
+        // opens — skipped when an owner/reset link already opened the Dashboard,
+        // or when the visitor tapped through from menu.html for a specific item
+        // (so the popup doesn't cover the item we're about to highlight).
+        if (!suppressWelcomePopup && pendingHighlightItemId === null) {
+            setTimeout(function () {
+                openSplash('welcome-splash');
+                setTimeout(function () { closeSplash('welcome-splash'); }, 4000);
+            }, 400);
         }
 
         // Re-check the Deals schedule every 30 seconds so Deals turn on/off by
