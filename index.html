@@ -787,7 +787,11 @@
                         <button class="add-btn" style="width:100%; margin-top:8px;" onclick="addNewItem()">Add Now</button>
                     </div>
 
-                    <h4 style="color:var(--accent-yellow); font-size:0.85rem; margin-top:12px; text-align:left;">Manage Items, Rates & Pictures:</h4>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+                        <h4 style="color:var(--accent-yellow); font-size:0.85rem; text-align:left; margin:0;">Manage Items, Rates & Pictures:</h4>
+                        <button class="reset-btn" style="width:auto; padding:4px 10px; font-size:0.68rem; margin:0;" onclick="renderAdminPriceEditor()">&#8635; Refresh List</button>
+                    </div>
+                    <div style="font-size:0.68rem; color:var(--text-muted); text-align:left; margin:4px 0 6px;">Agar kisi doosre device se change hua ho to yahan latest dikhane ke liye "Refresh List" dabayein.</div>
 
                     <div class="modal-body-scroll" id="admin-price-list" style="max-height:40vh;"></div>
 
@@ -3103,8 +3107,14 @@
                 menuSynced = true;
                 try { localStorage.setItem(MENU_KEY, JSON.stringify(menuItems)); } catch (e) {}
                 renderMenuGrid();
-                var panel = document.getElementById('admin-panel-box');
-                if (panel && panel.style.display !== 'none') renderAdminPriceEditor();
+                // NOTE: we deliberately do NOT auto-refresh the admin price-editor form
+                // here. This listener can fire at any moment (another device's change,
+                // or even this device's own write echoing back from the server) — if it
+                // rebuilt the editor while the owner was mid-typing new rates for several
+                // items, their unsaved edits would silently get wiped and replaced with
+                // the old server values, which looked like "rates changing on their own"
+                // after a refresh. The editor is refreshed explicitly instead: on login,
+                // after Save, and after add/delete/reset actions.
             }, function (err) {
                 console.warn('Menu sync error (offline?)', err);
             });
