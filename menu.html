@@ -348,13 +348,7 @@
         var descHtml = item.description ? '<div class="item-desc">' + escapeHtml(item.description) + '</div>' : '';
         var priceHtml;
         if (item.prices) {
-            // Use the saved display order (priceOrder) rather than the object's own
-            // key order — Firestore doesn't guarantee map key order survives a
-            // round-trip, which is what made sizes swap rows after a refresh.
-            var vOrder = (item.priceOrder && item.priceOrder.length) ? item.priceOrder : Object.keys(item.prices);
-            priceHtml = '<div class="item-variants">' + vOrder.filter(function (v) {
-                return v in item.prices;
-            }).map(function (v) {
+            priceHtml = '<div class="item-variants">' + Object.keys(item.prices).map(function (v) {
                 return escapeHtml(v) + ': <b>Rs. ' + item.prices[v] + '</b>';
             }).join('<br>') + '</div>';
         } else {
