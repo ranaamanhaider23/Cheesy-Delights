@@ -41,6 +41,27 @@
         color: var(--accent-yellow); letter-spacing: 0.5px;
         text-shadow: 0 2px 14px rgba(255, 183, 3, 0.25);
     }
+
+    /* ---------- Welcome splash (full-page, shown when the page opens) ---------- */
+    #welcome-splash {
+        display: none; position: fixed; inset: 0; z-index: 5000;
+        background: radial-gradient(ellipse at center, #1e1e22 0%, #0b0b0d 80%);
+        align-items: center; justify-content: center; text-align: center; padding: 24px;
+        opacity: 0; transition: opacity 0.35s ease;
+    }
+    #welcome-splash.show { display: flex; }
+    #welcome-splash.visible { opacity: 1; }
+    #welcome-splash .splash-emoji { font-size: 4.2rem; margin-bottom: 10px; }
+    #welcome-splash .splash-logo {
+        font-family: 'Fredoka', sans-serif; font-weight: 700; letter-spacing: 0.5px;
+        color: var(--accent-yellow); font-size: clamp(1.8rem, 8vw, 2.8rem);
+        text-shadow: 0 2px 14px rgba(255, 183, 3, 0.35);
+    }
+    #welcome-splash .splash-text { color: #fff; font-size: 0.95rem; margin-top: 14px; }
+    #welcome-splash .splash-btn {
+        margin-top: 24px; background-color: var(--accent-yellow); color: #000; border: none;
+        padding: 10px 26px; border-radius: 30px; font-weight: bold; font-size: 0.85rem; cursor: pointer;
+    }
     .sub-slogan {
         color: var(--text-muted); font-size: 0.8rem; margin-top: 5px;
         letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500;
@@ -89,8 +110,11 @@
         background-color: var(--card-bg); border: 1px solid var(--border-color);
         border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
         box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    .item-card.oos { opacity: 0.5; }
+    .item-card:active { transform: scale(0.97); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+    .item-card.oos { opacity: 0.5; cursor: default; }
+    .item-card.oos:active { transform: none; }
     .item-photo-wrap { position: relative; width: 100%; height: 100px; background: #000; }
     .item-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
     .no-photo-fallback {
@@ -135,7 +159,9 @@
         border: 1px solid var(--border-color); border-left: 4px solid var(--accent-yellow);
         border-radius: 12px; padding: 15px 16px; display: flex; justify-content: space-between;
         align-items: flex-start; margin-bottom: 13px; gap: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        cursor: pointer; transition: transform 0.15s ease;
     }
+    .deal-card:active { transform: scale(0.98); }
     .deal-info { flex: 1; }
     .deal-name { font-family: 'Fredoka', sans-serif; font-weight: 600; color: var(--accent-yellow); font-size: 0.95rem; margin-bottom: 3px; }
     .deal-bullets { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
@@ -166,6 +192,15 @@
     <div class="brand-title">🧀 Cheesy Delights</div>
     <div class="sub-slogan">More Cheese · More Happiness</div>
 </header>
+
+<div id="welcome-splash">
+    <div>
+        <div class="splash-emoji">🧀</div>
+        <div class="splash-logo">Cheesy Delights</div>
+        <p class="splash-text">Welcome! Browse our menu &amp; deals below</p>
+        <button class="splash-btn" onclick="closeWelcomeSplash()">View Menu</button>
+    </div>
+</div>
 
 <div class="tabs">
     <button class="tab-btn active" id="tab-menu-btn" onclick="showPage('menu')">📋 Menu</button>
@@ -294,7 +329,7 @@
             var bulletsHtml = disp.bullets
                 ? '<div class="deal-bullets">' + disp.bullets.map(escapeHtml).join(' + ') + '</div>'
                 : (d.description ? '<div class="deal-bullets">' + escapeHtml(d.description) + '</div>' : '');
-            return '<div class="deal-card">' +
+            return '<div class="deal-card" onclick="goOrderItem(' + d.id + ')">' +
                 '<div class="deal-info"><div class="deal-name">' + escapeHtml(disp.title) + '</div>' + bulletsHtml + '</div>' +
                 '<div class="deal-price">Rs. ' + Number(d.price || 0).toLocaleString() + '</div>' +
             '</div>';
@@ -317,7 +352,11 @@
         } else {
             priceHtml = '<div class="item-price">Rs. ' + Number(item.price || 0).toLocaleString() + '</div>';
         }
-        return '<div class="item-card' + (isOOS ? ' oos' : '') + '">' +
+        // Tapping a card jumps straight to the ordering site with this exact item
+        // scrolled into view and glowing, so the customer can order it right away
+        // instead of having to search for it again on index.html.
+        var clickAttr = isOOS ? '' : ' onclick="goOrderItem(' + item.id + ')"';
+        return '<div class="item-card' + (isOOS ? ' oos' : '') + '"' + clickAttr + '>' +
             '<div class="item-photo-wrap">' + photoHtml + favRibbon + oosBadge + '</div>' +
             '<div class="item-body">' +
                 '<div class="item-title">' + escapeHtml(item.name) + '</div>' +
@@ -325,6 +364,10 @@
                 priceHtml +
             '</div>' +
         '</div>';
+    }
+
+    function goOrderItem(id) {
+        window.location.href = 'index.html?item=' + id;
     }
 
     // One continuous page: every category gets its own heading + grid, in
@@ -398,6 +441,20 @@
     } else {
         console.warn('Firebase unavailable — showing last-known local menu copy only.');
     }
+
+    // Greet the visitor with a full-page welcome splash every time this page is opened.
+    function closeWelcomeSplash() {
+        var el = document.getElementById('welcome-splash');
+        el.classList.remove('visible');
+        setTimeout(function () { el.classList.remove('show'); }, 350);
+    }
+    setTimeout(function () {
+        var el = document.getElementById('welcome-splash');
+        if (!el) return;
+        el.classList.add('show');
+        setTimeout(function () { el.classList.add('visible'); }, 20);
+        setTimeout(closeWelcomeSplash, 4000);
+    }, 300);
 </script>
 
 </body>
