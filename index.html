@@ -268,9 +268,15 @@
         }
         .admin-price-title-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
         .admin-price-title { font-size: 0.85rem; font-weight: bold; color: var(--accent-yellow); }
-        .admin-variant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+        .admin-variant-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
         .admin-variant-row { display: flex; align-items: center; gap: 4px; }
-        .admin-variant-row label { font-size: 0.75rem; color: #ccc; width: 60px; flex-shrink: 0; }
+        .admin-variant-row .variant-label-input { flex: 1; min-width: 0; }
+        .admin-variant-row .variant-price-input { width: 90px; flex-shrink: 0; }
+        .admin-variant-row .variant-del-btn {
+            flex-shrink: 0; background: transparent; border: 1px solid var(--red); color: var(--red);
+            border-radius: 5px; width: 26px; height: 26px; font-size: 0.9rem; line-height: 1; cursor: pointer;
+        }
+        .add-size-btn { width: 100%; margin-top: 6px; font-size: 0.72rem; padding: 6px; }
         .admin-name-input { margin-top: 6px; }
 
         .add-item-box {
@@ -2363,14 +2369,14 @@
                 }
 
                 if (item.prices) {
-                    html += '<div class="admin-variant-grid">';
+                    html += '<div class="admin-variant-grid" id="variant-grid-' + item.id + '">';
+                    var vIdx = 0;
                     for (var vKey in item.prices) {
-                        html += '<div class="admin-variant-row">' +
-                            '<label>' + escapeHtml(vKey) + ':</label>' +
-                            '<input type="number" class="input-admin" id="price-input-' + item.id + '-' + vKey + '" value="' + item.prices[vKey] + '">' +
-                        '</div>';
+                        html += variantRowHtml(item.id, vIdx, vKey, item.prices[vKey]);
+                        vIdx++;
                     }
                     html += '</div>';
+                    html += '<button type="button" class="reset-btn add-size-btn" onclick="addVariantRow(' + item.id + ')">+ Add Size</button>';
                 } else {
                     html += '<div class="admin-variant-row" style="margin-top:4px;">' +
                         '<label>Price:</label>' +
@@ -2381,6 +2387,47 @@
                 box.innerHTML = html;
                 container.appendChild(box);
             }
+        }
+
+        // One editable size-variant row: size NAME (e.g. "Small", "Medium", "14 inch")
+        // and its price, both editable, plus a button to remove that size entirely.
+        function variantRowHtml(itemId, idx, label, price) {
+            return '<div class="admin-variant-row" data-vidx="' + idx + '">' +
+                '<input type="text" class="input-admin variant-label-input" id="variant-label-' + itemId + '-' + idx + '" value="' + escapeHtml(label) + '" placeholder="Size name (e.g. Small)">' +
+                '<input type="number" class="input-admin variant-price-input" id="variant-price-' + itemId + '-' + idx + '" value="' + price + '" placeholder="Rs.">' +
+                '<button type="button" class="variant-del-btn" onclick="removeVariantRow(' + itemId + ', ' + idx + ')" title="Remove this size">&times;</button>' +
+            '</div>';
+        }
+
+        // Adds a new blank size row under an existing item (e.g. adding a "Large" to
+        // a pizza that currently only has Small/Medium) without losing other edits
+        // already typed into the form.
+        function addVariantRow(itemId) {
+            var grid = document.getElementById('variant-grid-' + itemId);
+            if (!grid) return;
+            var existingRows = grid.querySelectorAll('.admin-variant-row');
+            var nextIdx = 0;
+            existingRows.forEach(function (row) {
+                var idx = parseInt(row.getAttribute('data-vidx'), 10);
+                if (idx >= nextIdx) nextIdx = idx + 1;
+            });
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = variantRowHtml(itemId, nextIdx, '', 0);
+            grid.appendChild(wrapper.firstChild);
+        }
+
+        // Removes one size row. An item must keep at least one size, otherwise it
+        // would have no price at all — so the last remaining row can't be removed.
+        function removeVariantRow(itemId, idx) {
+            var grid = document.getElementById('variant-grid-' + itemId);
+            if (!grid) return;
+            var rows = grid.querySelectorAll('.admin-variant-row');
+            if (rows.length <= 1) {
+                showToast('Kam az kam 1 size zaroori hai. Is item ko delete karne ke liye "Delete" button use karein.');
+                return;
+            }
+            var row = grid.querySelector('.admin-variant-row[data-vidx="' + idx + '"]');
+            if (row) row.remove();
         }
 
         // ---------- Item images ----------
@@ -2680,9 +2727,23 @@
                 }
 
                 if (item.prices) {
-                    for (var vKey in item.prices) {
-                        var inp = document.getElementById('price-input-' + item.id + '-' + vKey);
-                        if (inp) item.prices[vKey] = parseInt(inp.value) || 0;
+                    // Rebuild the whole prices object from the on-screen rows, since a
+                    // size's NAME can now be renamed, added or removed in the form.
+                    var grid = document.getElementById('variant-grid-' + item.id);
+                    if (grid) {
+                        var newPrices = {};
+                        var rows = grid.querySelectorAll('.admin-variant-row');
+                        rows.forEach(function (row) {
+                            var vidx = row.getAttribute('data-vidx');
+                            var labelInp = document.getElementById('variant-label-' + item.id + '-' + vidx);
+                            var priceInp = document.getElementById('variant-price-' + item.id + '-' + vidx);
+                            if (!labelInp || !priceInp) return;
+                            // Colons are used internally to separate "size:price" when a
+                            // customer picks a variant, so strip any the admin types in.
+                            var lbl = labelInp.value.trim().replace(/:/g, '');
+                            if (lbl) newPrices[lbl] = parseInt(priceInp.value) || 0;
+                        });
+                        if (Object.keys(newPrices).length > 0) item.prices = newPrices;
                     }
                 } else {
                     var inpSingle = document.getElementById('price-input-' + item.id);
@@ -2691,15 +2752,19 @@
             }
 
             localStorage.setItem(MENU_KEY, JSON.stringify(menuItems));
-            var saveBatch = db.batch();
-            menuItems.forEach(function (it) {
-                saveBatch.set(db.collection('menuItems').doc(String(it.id)), it);
-            });
-            saveBatch.commit().catch(function (err) {
-                console.warn('Prices sync failed (offline?)', err);
-                showToast('Changes local save hui, internet na hone ki wajah se dusre devices par abhi nahi gayi.');
-            });
-            showToast('Prices & Changes Saved!');
+            if (db) {
+                var saveBatch = db.batch();
+                menuItems.forEach(function (it) {
+                    saveBatch.set(db.collection('menuItems').doc(String(it.id)), it);
+                });
+                saveBatch.commit().catch(function (err) {
+                    console.warn('Prices sync failed (offline?)', err);
+                    showToast('Changes local save hui, internet na hone ki wajah se dusre devices par abhi nahi gayi.');
+                });
+                showToast('Prices & Changes Saved!');
+            } else {
+                showToast('Prices local save hui (internet/Firebase available nahi — dusre devices par nahi gayi).');
+            }
             renderMenuGrid();
             closeModal('admin-modal');
         }
