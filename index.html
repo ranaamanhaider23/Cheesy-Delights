@@ -268,15 +268,9 @@
         }
         .admin-price-title-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
         .admin-price-title { font-size: 0.85rem; font-weight: bold; color: var(--accent-yellow); }
-        .admin-variant-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+        .admin-variant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
         .admin-variant-row { display: flex; align-items: center; gap: 4px; }
-        .admin-variant-row .variant-label-input { flex: 1; min-width: 0; }
-        .admin-variant-row .variant-price-input { width: 90px; flex-shrink: 0; }
-        .admin-variant-row .variant-del-btn {
-            flex-shrink: 0; background: transparent; border: 1px solid var(--red); color: var(--red);
-            border-radius: 5px; width: 26px; height: 26px; font-size: 0.9rem; line-height: 1; cursor: pointer;
-        }
-        .add-size-btn { width: 100%; margin-top: 6px; font-size: 0.72rem; padding: 6px; }
+        .admin-variant-row label { font-size: 0.75rem; color: #ccc; width: 60px; flex-shrink: 0; }
         .admin-name-input { margin-top: 6px; }
 
         .add-item-box {
@@ -787,11 +781,7 @@
                         <button class="add-btn" style="width:100%; margin-top:8px;" onclick="addNewItem()">Add Now</button>
                     </div>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-                        <h4 style="color:var(--accent-yellow); font-size:0.85rem; text-align:left; margin:0;">Manage Items, Rates & Pictures:</h4>
-                        <button class="reset-btn" style="width:auto; padding:4px 10px; font-size:0.68rem; margin:0;" onclick="renderAdminPriceEditor()">&#8635; Refresh List</button>
-                    </div>
-                    <div style="font-size:0.68rem; color:var(--text-muted); text-align:left; margin:4px 0 6px;">Agar kisi doosre device se change hua ho to yahan latest dikhane ke liye "Refresh List" dabayein.</div>
+                    <h4 style="color:var(--accent-yellow); font-size:0.85rem; margin-top:12px; text-align:left;">Manage Items, Rates & Pictures:</h4>
 
                     <div class="modal-body-scroll" id="admin-price-list" style="max-height:40vh;"></div>
 
@@ -1043,15 +1033,6 @@
             // Wings
             { id: 47, cat: 'wings', name: 'Oven Back Wings', prices: { "6 Pcs": 420, "12 Pcs": 690 } }
         ];
-
-        // Firestore does NOT guarantee the key order of a map field (sizes could come
-        // back in a different order than they were saved in, e.g. "Medium" jumping
-        // above "Small"). So every item with size variants also carries an explicit
-        // priceOrder array — the real source of truth for display order — alongside
-        // the prices object. Derived once here from each item's own key order.
-        defaultMenuItems.forEach(function (it) {
-            if (it.prices && !it.priceOrder) it.priceOrder = Object.keys(it.prices);
-        });
 
         var savedMenu = localStorage.getItem(MENU_KEY);
         var menuItems = savedMenu ? JSON.parse(savedMenu) : defaultMenuItems.slice();
@@ -1627,13 +1608,7 @@
 
                 if (item.prices) {
                     html += '<select class="variant-select" id="sel-' + item.id + '"' + (isOOS ? ' disabled' : '') + '>';
-                    // Use the saved display order (priceOrder) rather than the object's
-                    // own key order — Firestore doesn't guarantee map key order survives
-                    // a round-trip, which is what made sizes swap rows after a refresh.
-                    var custVOrder = (item.priceOrder && item.priceOrder.length) ? item.priceOrder : Object.keys(item.prices);
-                    for (var cvi = 0; cvi < custVOrder.length; cvi++) {
-                        var variant = custVOrder[cvi];
-                        if (!(variant in item.prices)) continue;
+                    for (var variant in item.prices) {
                         html += '<option value="' + escapeHtml(variant) + ':' + item.prices[variant] + '">' + escapeHtml(variant) + ' - Rs. ' + item.prices[variant] + '</option>';
                     }
                     html += '</select></div>';
@@ -2388,15 +2363,14 @@
                 }
 
                 if (item.prices) {
-                    html += '<div class="admin-variant-grid" id="variant-grid-' + item.id + '">';
-                    var vOrder = (item.priceOrder && item.priceOrder.length) ? item.priceOrder : Object.keys(item.prices);
-                    for (var vIdx = 0; vIdx < vOrder.length; vIdx++) {
-                        var vKey = vOrder[vIdx];
-                        if (!(vKey in item.prices)) continue;
-                        html += variantRowHtml(item.id, vIdx, vKey, item.prices[vKey]);
+                    html += '<div class="admin-variant-grid">';
+                    for (var vKey in item.prices) {
+                        html += '<div class="admin-variant-row">' +
+                            '<label>' + escapeHtml(vKey) + ':</label>' +
+                            '<input type="number" class="input-admin" id="price-input-' + item.id + '-' + vKey + '" value="' + item.prices[vKey] + '">' +
+                        '</div>';
                     }
                     html += '</div>';
-                    html += '<button type="button" class="reset-btn add-size-btn" onclick="addVariantRow(' + item.id + ')">+ Add Size</button>';
                 } else {
                     html += '<div class="admin-variant-row" style="margin-top:4px;">' +
                         '<label>Price:</label>' +
@@ -2407,47 +2381,6 @@
                 box.innerHTML = html;
                 container.appendChild(box);
             }
-        }
-
-        // One editable size-variant row: size NAME (e.g. "Small", "Medium", "14 inch")
-        // and its price, both editable, plus a button to remove that size entirely.
-        function variantRowHtml(itemId, idx, label, price) {
-            return '<div class="admin-variant-row" data-vidx="' + idx + '">' +
-                '<input type="text" class="input-admin variant-label-input" id="variant-label-' + itemId + '-' + idx + '" value="' + escapeHtml(label) + '" placeholder="Size name (e.g. Small)">' +
-                '<input type="number" class="input-admin variant-price-input" id="variant-price-' + itemId + '-' + idx + '" value="' + price + '" placeholder="Rs.">' +
-                '<button type="button" class="variant-del-btn" onclick="removeVariantRow(' + itemId + ', ' + idx + ')" title="Remove this size">&times;</button>' +
-            '</div>';
-        }
-
-        // Adds a new blank size row under an existing item (e.g. adding a "Large" to
-        // a pizza that currently only has Small/Medium) without losing other edits
-        // already typed into the form.
-        function addVariantRow(itemId) {
-            var grid = document.getElementById('variant-grid-' + itemId);
-            if (!grid) return;
-            var existingRows = grid.querySelectorAll('.admin-variant-row');
-            var nextIdx = 0;
-            existingRows.forEach(function (row) {
-                var idx = parseInt(row.getAttribute('data-vidx'), 10);
-                if (idx >= nextIdx) nextIdx = idx + 1;
-            });
-            var wrapper = document.createElement('div');
-            wrapper.innerHTML = variantRowHtml(itemId, nextIdx, '', 0);
-            grid.appendChild(wrapper.firstChild);
-        }
-
-        // Removes one size row. An item must keep at least one size, otherwise it
-        // would have no price at all — so the last remaining row can't be removed.
-        function removeVariantRow(itemId, idx) {
-            var grid = document.getElementById('variant-grid-' + itemId);
-            if (!grid) return;
-            var rows = grid.querySelectorAll('.admin-variant-row');
-            if (rows.length <= 1) {
-                showToast('Kam az kam 1 size zaroori hai. Is item ko delete karne ke liye "Delete" button use karein.');
-                return;
-            }
-            var row = grid.querySelector('.admin-variant-row[data-vidx="' + idx + '"]');
-            if (row) row.remove();
         }
 
         // ---------- Item images ----------
@@ -2583,10 +2516,7 @@
             for (var i = 0; i < items.length; i++) {
                 var it = items[i];
                 if (it.prices) {
-                    var dcOrder = (it.priceOrder && it.priceOrder.length) ? it.priceOrder : Object.keys(it.prices);
-                    for (var dci = 0; dci < dcOrder.length; dci++) {
-                        var vName = dcOrder[dci];
-                        if (!(vName in it.prices)) continue;
+                    for (var vName in it.prices) {
                         html += '<option value="' + it.id + '::' + escapeHtml(vName) + '">' + escapeHtml(it.name) + ' (' + escapeHtml(vName) + ') \u2014 Rs.' + it.prices[vName] + '</option>';
                     }
                 } else {
@@ -2647,7 +2577,6 @@
             if (hasVariants) {
                 var rows = document.getElementById('new-item-variant-rows').children;
                 var prices = {};
-                var priceOrder = [];
                 var validCount = 0;
                 for (var i = 0; i < rows.length; i++) {
                     var inputs = rows[i].querySelectorAll('input');
@@ -2655,7 +2584,6 @@
                     var vPrice = parseInt(inputs[1].value);
                     if (vName && !isNaN(vPrice) && vPrice >= 0) {
                         prices[vName] = vPrice;
-                        priceOrder.push(vName);
                         validCount++;
                     }
                 }
@@ -2664,7 +2592,6 @@
                     return;
                 }
                 newItem.prices = prices;
-                newItem.priceOrder = priceOrder;
             } else {
                 var price = parseInt(document.getElementById('new-item-price').value);
                 if (isNaN(price) || price < 0) {
@@ -2753,33 +2680,9 @@
                 }
 
                 if (item.prices) {
-                    // Rebuild the whole prices object from the on-screen rows, since a
-                    // size's NAME can now be renamed, added or removed in the form.
-                    var grid = document.getElementById('variant-grid-' + item.id);
-                    if (grid) {
-                        var newPrices = {};
-                        var newPriceOrder = [];
-                        // querySelectorAll returns rows in their on-screen top-to-bottom
-                        // order, which is exactly the display order we want to keep —
-                        // that's what gets saved into priceOrder below.
-                        var rows = grid.querySelectorAll('.admin-variant-row');
-                        rows.forEach(function (row) {
-                            var vidx = row.getAttribute('data-vidx');
-                            var labelInp = document.getElementById('variant-label-' + item.id + '-' + vidx);
-                            var priceInp = document.getElementById('variant-price-' + item.id + '-' + vidx);
-                            if (!labelInp || !priceInp) return;
-                            // Colons are used internally to separate "size:price" when a
-                            // customer picks a variant, so strip any the admin types in.
-                            var lbl = labelInp.value.trim().replace(/:/g, '');
-                            if (lbl) {
-                                newPrices[lbl] = parseInt(priceInp.value) || 0;
-                                newPriceOrder.push(lbl);
-                            }
-                        });
-                        if (Object.keys(newPrices).length > 0) {
-                            item.prices = newPrices;
-                            item.priceOrder = newPriceOrder;
-                        }
+                    for (var vKey in item.prices) {
+                        var inp = document.getElementById('price-input-' + item.id + '-' + vKey);
+                        if (inp) item.prices[vKey] = parseInt(inp.value) || 0;
                     }
                 } else {
                     var inpSingle = document.getElementById('price-input-' + item.id);
@@ -2788,19 +2691,15 @@
             }
 
             localStorage.setItem(MENU_KEY, JSON.stringify(menuItems));
-            if (db) {
-                var saveBatch = db.batch();
-                menuItems.forEach(function (it) {
-                    saveBatch.set(db.collection('menuItems').doc(String(it.id)), it);
-                });
-                saveBatch.commit().catch(function (err) {
-                    console.warn('Prices sync failed (offline?)', err);
-                    showToast('Changes local save hui, internet na hone ki wajah se dusre devices par abhi nahi gayi.');
-                });
-                showToast('Prices & Changes Saved!');
-            } else {
-                showToast('Prices local save hui (internet/Firebase available nahi — dusre devices par nahi gayi).');
-            }
+            var saveBatch = db.batch();
+            menuItems.forEach(function (it) {
+                saveBatch.set(db.collection('menuItems').doc(String(it.id)), it);
+            });
+            saveBatch.commit().catch(function (err) {
+                console.warn('Prices sync failed (offline?)', err);
+                showToast('Changes local save hui, internet na hone ki wajah se dusre devices par abhi nahi gayi.');
+            });
+            showToast('Prices & Changes Saved!');
             renderMenuGrid();
             closeModal('admin-modal');
         }
@@ -3139,14 +3038,8 @@
                 menuSynced = true;
                 try { localStorage.setItem(MENU_KEY, JSON.stringify(menuItems)); } catch (e) {}
                 renderMenuGrid();
-                // NOTE: we deliberately do NOT auto-refresh the admin price-editor form
-                // here. This listener can fire at any moment (another device's change,
-                // or even this device's own write echoing back from the server) — if it
-                // rebuilt the editor while the owner was mid-typing new rates for several
-                // items, their unsaved edits would silently get wiped and replaced with
-                // the old server values, which looked like "rates changing on their own"
-                // after a refresh. The editor is refreshed explicitly instead: on login,
-                // after Save, and after add/delete/reset actions.
+                var panel = document.getElementById('admin-panel-box');
+                if (panel && panel.style.display !== 'none') renderAdminPriceEditor();
             }, function (err) {
                 console.warn('Menu sync error (offline?)', err);
             });
