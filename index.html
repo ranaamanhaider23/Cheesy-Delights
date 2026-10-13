@@ -205,6 +205,8 @@
         }
         .splash-screen.show { display: flex; }
         .splash-screen.visible { opacity: 1; }
+        /* Shown immediately on page load, with no fade-in and no JS needed to appear */
+        .splash-screen.splash-visible-default { display: flex; opacity: 1; z-index: 5000; }
         .splash-inner { max-width: 420px; }
         .splash-emoji { font-size: 4.5rem; margin-bottom: 10px; animation: heroFloat 3.2s ease-in-out infinite; }
         .splash-logo { font-size: clamp(2rem, 9vw, 3.2rem); }
@@ -541,6 +543,31 @@
     </style>
 </head>
 <body>
+
+    <!-- Welcome splash: full-page greeting with the Cheesy Delights logo. Placed first in
+         <body> and visible by default (no "show" class needed) so it covers the page the
+         instant the HTML starts rendering — the site underneath is never seen first. -->
+    <div class="splash-screen splash-visible-default" id="welcome-splash">
+        <div class="splash-inner">
+            <div class="splash-emoji">🧀</div>
+            <div class="hero-logo splash-logo">Cheesy Delights</div>
+            <p class="splash-text">Welcome! Enjoy hot &amp; cheesy food made just for you 😋</p>
+            <button class="hero-cta" onclick="closeSplash('welcome-splash')">Explore Menu</button>
+        </div>
+    </div>
+    <script>
+        // Hide the welcome splash instantly (before first paint) for the two cases where
+        // it shouldn't appear: an owner/reset link opening the Dashboard directly, or a
+        // customer tapping through from menu.html for one specific item.
+        (function () {
+            try {
+                var p = new URLSearchParams(window.location.search);
+                if (p.get('ownerreset') === 'cheesy2026' || p.get('item')) {
+                    document.getElementById('welcome-splash').style.display = 'none';
+                }
+            } catch (e) {}
+        })();
+    </script>
 
     <header>
         <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()">&#127769;</button>
@@ -899,16 +926,6 @@
                 <button class="confirm-no-btn" onclick="closeModal('confirm-modal')">Cancel</button>
                 <button class="confirm-yes-btn" onclick="handleConfirmYes()">Confirm</button>
             </div>
-        </div>
-    </div>
-
-    <!-- Welcome splash: full-page greeting with the Cheesy Delights logo, shown as soon as the site opens -->
-    <div class="splash-screen" id="welcome-splash">
-        <div class="splash-inner">
-            <div class="splash-emoji">🧀</div>
-            <div class="hero-logo splash-logo">Cheesy Delights</div>
-            <p class="splash-text">Welcome! Enjoy hot &amp; cheesy food made just for you 😋</p>
-            <button class="hero-cta" onclick="closeSplash('welcome-splash')">Explore Menu</button>
         </div>
     </div>
 
@@ -2874,7 +2891,7 @@
         }
         function closeSplash(id) {
             var el = document.getElementById(id);
-            el.classList.remove('visible');
+            el.classList.remove('visible', 'splash-visible-default');
             setTimeout(function () { el.classList.remove('show'); }, 350);
         }
 
@@ -3117,16 +3134,11 @@
             console.warn('Firestore sync could not start — running on local data only.', e);
         }
 
-        // Greet every visitor with a Cheesy Delights welcome popup when the site
-        // opens — skipped when an owner/reset link already opened the Dashboard,
-        // or when the visitor tapped through from menu.html for a specific item
-        // (so the popup doesn't cover the item we're about to highlight).
-        if (!suppressWelcomePopup && pendingHighlightItemId === null) {
-            setTimeout(function () {
-                openSplash('welcome-splash');
-                setTimeout(function () { closeSplash('welcome-splash'); }, 4000);
-            }, 400);
-        }
+        // The Cheesy Delights welcome splash is already showing (it's visible by default,
+        // first thing in <body>, so it covers the page before anything else is seen) —
+        // just auto-close it after a few seconds. The inline script right after the splash
+        // div already hid it instantly for the owner/reset-link and item-deep-link cases.
+        setTimeout(function () { closeSplash('welcome-splash'); }, 2800);
 
         // Re-check the Deals schedule every 30 seconds so Deals turn on/off by
         // themselves at the set time, even if the page is just left open.
