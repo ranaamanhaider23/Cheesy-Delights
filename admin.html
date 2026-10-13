@@ -151,12 +151,9 @@
 </head>
 <body>
 
-<header>
-    <div class="brand-title">🧀 Cheesy Delights</div>
-    <div class="sub-slogan">Orders Dashboard</div>
-</header>
-
-<div id="welcome-splash">
+<!-- Welcome splash: first thing in <body> and visible immediately (no JS needed to
+     appear), so it covers the dashboard before it's ever seen underneath. -->
+<div id="welcome-splash" class="show visible">
     <div>
         <div class="splash-emoji">🧀</div>
         <div class="splash-logo">Cheesy Delights</div>
@@ -164,6 +161,11 @@
         <button class="splash-btn" onclick="closeWelcomeSplash()">Continue</button>
     </div>
 </div>
+
+<header>
+    <div class="brand-title">🧀 Cheesy Delights</div>
+    <div class="sub-slogan">Orders Dashboard</div>
+</header>
 
 <div class="container">
 
@@ -410,19 +412,15 @@
         // The live listener will re-render automatically once the delete lands.
     }
 
-    // Greet the owner with a full-page welcome splash every time the dashboard is opened.
+    // The welcome splash is already showing (visible by default in the HTML, first
+    // thing in <body>, so it covers the dashboard before anything else is seen) —
+    // just auto-close it after a few seconds.
     function closeWelcomeSplash() {
         var el = document.getElementById('welcome-splash');
         el.classList.remove('visible');
         setTimeout(function () { el.classList.remove('show'); }, 350);
     }
-    setTimeout(function () {
-        var el = document.getElementById('welcome-splash');
-        if (!el) return;
-        el.classList.add('show');
-        setTimeout(function () { el.classList.add('visible'); }, 20);
-        setTimeout(closeWelcomeSplash, 4000);
-    }, 300);
+    setTimeout(closeWelcomeSplash, 2800);
 </script>
 
 </body>
