@@ -348,7 +348,13 @@
         var descHtml = item.description ? '<div class="item-desc">' + escapeHtml(item.description) + '</div>' : '';
         var priceHtml;
         if (item.prices) {
-            priceHtml = '<div class="item-variants">' + Object.keys(item.prices).map(function (v) {
+            // Use the saved display order (priceOrder) rather than the object's own
+            // key order — Firestore doesn't guarantee map key order survives a
+            // round-trip, which is what made sizes swap rows after a refresh.
+            var vOrder = (item.priceOrder && item.priceOrder.length) ? item.priceOrder : Object.keys(item.prices);
+            priceHtml = '<div class="item-variants">' + vOrder.filter(function (v) {
+                return v in item.prices;
+            }).map(function (v) {
                 return escapeHtml(v) + ': <b>Rs. ' + item.prices[v] + '</b>';
             }).join('<br>') + '</div>';
         } else {
@@ -427,6 +433,26 @@
             try { localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(all)); } catch (e) {}
             renderFullMenu();
             renderDeals(all.filter(function (it) { return it.cat === 'deals'; }));
+
+            // One-time self-heal: an item with sizes saved before the priceOrder fix
+            // has no priceOrder field, so its sizes fall back to the prices object's
+            // own key order — which Firestore does not guarantee stays the same
+            // between reads, and is what made size rows keep swapping on refresh.
+            // This locks in the current order and saves it back, so every page
+            // (menu.html and index.html) sees a stable order from then on. Safe to
+            // do from this read-only menu page too: it only ever writes back the
+            // exact order it just read, never changes any price or name.
+            var healBatch = null;
+            all.forEach(function (it) {
+                if (it.prices && (!it.priceOrder || !it.priceOrder.length)) {
+                    it.priceOrder = Object.keys(it.prices);
+                    if (!healBatch) healBatch = db.batch();
+                    healBatch.set(db.collection('menuItems').doc(String(it.id)), it);
+                }
+            });
+            if (healBatch) {
+                healBatch.commit().catch(function (err) { console.warn('priceOrder self-heal failed (offline?)', err); });
+            }
         }, function (err) {
             console.warn('Menu sync error (offline?)', err);
         });
