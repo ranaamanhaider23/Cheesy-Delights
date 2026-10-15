@@ -110,7 +110,7 @@
         .item-title { font-size: 0.95rem; font-weight: bold; color: var(--text-light); margin-bottom: 5px; }
         .item-desc {
             font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; margin: -3px 0 6px;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+            white-space: pre-line; word-wrap: break-word;
         }
         .deal-bullets { list-style: none; margin: 0 0 6px; padding: 0; }
         .deal-bullets li {
@@ -875,8 +875,6 @@
                             <input type="text" id="new-category-name" class="input-admin" style="margin-bottom:0;" placeholder="New category name">
                             <button class="add-btn" onclick="addCategory()">Add</button>
                         </div>
-                        <button class="reset-btn" style="margin-top:8px;" onclick="restoreMissingDefaults()">Restore Missing Defaults (deletes nothing)</button>
-                        <div style="font-size:0.68rem; color:var(--text-muted); margin-top:4px;">Agar koi default category/item (jaise Deals) kisi wajah se gayab ho jaye, yeh button usay wapas le aayega \u2014 aap ke baaki items/changes ko haath nahi lagayega.</div>
                     </div>
 
                     <div class="setting-row" style="flex-direction:column; align-items:stretch;">
@@ -2829,56 +2827,6 @@
                 renderMenuGrid();
                 showToast('Menu aur categories default par reset ho gayi hain.');
             });
-        }
-
-        function restoreMissingDefaults() {
-            var cats = getCategories();
-            var catIds = cats.map(function(c) { return c.id; });
-            var addedCats = [];
-            for (var i = 0; i < defaultCategories.length; i++) {
-                if (catIds.indexOf(defaultCategories[i].id) === -1) {
-                    cats.push(JSON.parse(JSON.stringify(defaultCategories[i])));
-                    addedCats.push(defaultCategories[i].label);
-                }
-            }
-
-            var itemIds = menuItems.map(function(it) { return String(it.id); });
-            var addedItems = [];
-            for (var j = 0; j < defaultMenuItems.length; j++) {
-                if (itemIds.indexOf(String(defaultMenuItems[j].id)) === -1) {
-                    menuItems.push(JSON.parse(JSON.stringify(defaultMenuItems[j])));
-                    addedItems.push(defaultMenuItems[j].name);
-                }
-            }
-
-            if (addedCats.length === 0 && addedItems.length === 0) {
-                showToast('Kuch bhi missing nahi mila \u2014 sab default categories aur items pehle se maujood hain.');
-                return;
-            }
-
-            saveCategories(cats);
-            pushSettingsUpdate({ categories: cats });
-            try { localStorage.setItem(MENU_KEY, JSON.stringify(menuItems)); } catch (e) {}
-
-            var restoreBatch = db.batch();
-            for (var k = 0; k < defaultMenuItems.length; k++) {
-                if (addedItems.indexOf(defaultMenuItems[k].name) !== -1) {
-                    var addedItem = menuItems.find(function (it) { return String(it.id) === String(defaultMenuItems[k].id); });
-                    if (addedItem) restoreBatch.set(db.collection('menuItems').doc(String(addedItem.id)), addedItem);
-                }
-            }
-            restoreBatch.commit().catch(function (err) { console.warn('Restore sync failed (offline?)', err); });
-
-            renderNavCategories();
-            renderCategoryDropdown();
-            renderCategoryManageList();
-            renderAdminPriceEditor();
-            renderMenuGrid();
-
-            var parts = [];
-            if (addedCats.length) parts.push(addedCats.length + ' category(ies): ' + addedCats.join(', '));
-            if (addedItems.length) parts.push(addedItems.length + ' item(s): ' + addedItems.join(', '));
-            showToast('Restore ho gaya \u2014 ' + parts.join(' | '));
         }
 
         // ---------- Deals timing (show "Deals" category only during set hours) ----------
