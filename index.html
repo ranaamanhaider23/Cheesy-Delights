@@ -1131,6 +1131,9 @@
             var html = '';
             for (var i = 0; i < cats.length; i++) {
                 if (cats[i].id === 'deals' && !dealsOn) continue;
+                // Customers shouldn't see empty tabs (e.g. a leftover duplicate "Deals").
+                var catId = cats[i].id;
+                if (!menuItems.some(function (it) { return it.cat === catId; })) continue;
                 html += '<button class="nav-btn' + (currentCategory === cats[i].id ? ' active' : '') + '" onclick="filterItems(this, \'' + cats[i].id + '\')">' + escapeHtml(cats[i].label) + '</button>';
             }
             container.innerHTML = html;
@@ -1674,6 +1677,17 @@
             });
             return names.length >= 2 ? names : [];
         }
+        function flvCatNames(cat, items) {
+            var list = flvCategoryList(cat);
+            if (list.length) return list;
+            var seen = {}, names = [];
+            items.forEach(function (it) {
+                if (it.cat !== cat.id || it.outOfStock) return;
+                var b = flvBase(it.name);
+                if (b && !seen[b.toLowerCase()]) { seen[b.toLowerCase()] = 1; names.push(b); }
+            });
+            return names;
+        }
         function flvParseBullet(b) {
             var s = String(b).trim();
             var m = s.match(/^(\d{1,2})\s*[x\u00D7]\s*(.+)$/i) || s.match(/^(\d{1,2})\s+(?![.\d])(.+)$/);
@@ -1735,10 +1749,22 @@
                 if (exact) {
                     var fl = itemFlavors(exact, cats);
                     if (fl.length) { out.push({ label: flvBase(exact.name), count: pb.qty, list: fl }); return; }
-                    if (!force) return;
+                    // A specific item is named in the deal (e.g. "Cheesy Delight Special"):
+                    // still let the customer pick from the same kind of items (all pizzas,
+                    // all burgers...), with the named item already selected.
                     var ec = flvFindCat(cats, exact.cat);
-                    var eo = ec ? flvCategoryOptions(ec, items, cats) : [];
-                    if (eo.length) out.push({ label: (ec && flvStripEmoji(ec.label)) || base, count: pb.qty, list: eo });
+                    if (ec) {
+                        var key = flvTokens(flvStripEmoji(ec.label)).join(' ');
+                        var sibs = cats.filter(function (c) { return c.id !== 'deals' && flvTokens(flvStripEmoji(c.label)).join(' ') === key; });
+                        if (!sibs.length) sibs = [ec];
+                        var names = [];
+                        sibs.forEach(function (c) { flvCatNames(c, items).forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); }); });
+                        if (names.length >= 2) {
+                            var lbl = flvStripEmoji(ec.label) || base;
+                            if (sibs.length > 1) lbl = lbl.split(' ').pop();
+                            out.push({ label: lbl, count: pb.qty, list: names, def: flvBase(exact.name) });
+                        }
+                    }
                     return;
                 }
                 var toks = flvTokens(base);
@@ -1826,7 +1852,7 @@
             var prog = box.querySelector('.flv-prog');
             if (!prog) return;
             var sels = box.querySelectorAll('select.flavor-select'), done = 0;
-            Array.prototype.forEach.call(sels, function (x) { if (x.value) done++; });
+            Array.prototype.forEach.call(sels, function (x) { if (x.value) done++; x.classList.toggle('flavor-done', !!x.value); });
             prog.textContent = done + '/' + sels.length;
             prog.classList.toggle('flv-complete', done === sels.length && sels.length > 0);
         }
@@ -1868,11 +1894,11 @@
                         if (c.groups) {
                             c.groups.forEach(function (g) {
                                 h += '<optgroup label="' + escapeHtml(g.label) + '">';
-                                g.list.forEach(function (o) { h += '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>'; });
+                                g.list.forEach(function (o) { h += '<option value="' + escapeHtml(o) + '"' + (c.def === o ? ' selected' : '') + '>' + escapeHtml(o) + '</option>'; });
                                 h += '</optgroup>';
                             });
                         } else {
-                            c.list.forEach(function (o) { h += '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>'; });
+                            c.list.forEach(function (o) { h += '<option value="' + escapeHtml(o) + '"' + (c.def === o ? ' selected' : '') + '>' + escapeHtml(o) + '</option>'; });
                         }
                         h += '</select></div></div>';
                     }
@@ -3727,6 +3753,7 @@
                 menuItems = items;
                 menuSynced = true;
                 try { localStorage.setItem(MENU_KEY, JSON.stringify(menuItems)); } catch (e) {}
+                renderNavCategories();
                 renderMenuGrid();
                 if (!snap.metadata.fromCache) ensureDailyBackup();
 
