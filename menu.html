@@ -369,6 +369,17 @@
             });
             return names.length >= 2 ? names : [];
         }
+        function flvCatNames(cat, items) {
+            var list = flvCategoryList(cat);
+            if (list.length) return list;
+            var seen = {}, names = [];
+            items.forEach(function (it) {
+                if (it.cat !== cat.id || it.outOfStock) return;
+                var b = flvBase(it.name);
+                if (b && !seen[b.toLowerCase()]) { seen[b.toLowerCase()] = 1; names.push(b); }
+            });
+            return names;
+        }
         function flvParseBullet(b) {
             var s = String(b).trim();
             var m = s.match(/^(\d{1,2})\s*[x\u00D7]\s*(.+)$/i) || s.match(/^(\d{1,2})\s+(?![.\d])(.+)$/);
@@ -430,10 +441,22 @@
                 if (exact) {
                     var fl = itemFlavors(exact, cats);
                     if (fl.length) { out.push({ label: flvBase(exact.name), count: pb.qty, list: fl }); return; }
-                    if (!force) return;
+                    // A specific item is named in the deal (e.g. "Cheesy Delight Special"):
+                    // still let the customer pick from the same kind of items (all pizzas,
+                    // all burgers...), with the named item already selected.
                     var ec = flvFindCat(cats, exact.cat);
-                    var eo = ec ? flvCategoryOptions(ec, items, cats) : [];
-                    if (eo.length) out.push({ label: (ec && flvStripEmoji(ec.label)) || base, count: pb.qty, list: eo });
+                    if (ec) {
+                        var key = flvTokens(flvStripEmoji(ec.label)).join(' ');
+                        var sibs = cats.filter(function (c) { return c.id !== 'deals' && flvTokens(flvStripEmoji(c.label)).join(' ') === key; });
+                        if (!sibs.length) sibs = [ec];
+                        var names = [];
+                        sibs.forEach(function (c) { flvCatNames(c, items).forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); }); });
+                        if (names.length >= 2) {
+                            var lbl = flvStripEmoji(ec.label) || base;
+                            if (sibs.length > 1) lbl = lbl.split(' ').pop();
+                            out.push({ label: lbl, count: pb.qty, list: names, def: flvBase(exact.name) });
+                        }
+                    }
                     return;
                 }
                 var toks = flvTokens(base);
@@ -521,7 +544,7 @@
             var prog = box.querySelector('.flv-prog');
             if (!prog) return;
             var sels = box.querySelectorAll('select.flavor-select'), done = 0;
-            Array.prototype.forEach.call(sels, function (x) { if (x.value) done++; });
+            Array.prototype.forEach.call(sels, function (x) { if (x.value) done++; x.classList.toggle('flavor-done', !!x.value); });
             prog.textContent = done + '/' + sels.length;
             prog.classList.toggle('flv-complete', done === sels.length && sels.length > 0);
         }
