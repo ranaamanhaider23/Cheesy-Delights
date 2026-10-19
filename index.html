@@ -91,6 +91,26 @@
             border-color: var(--text-muted); color: var(--text-muted); cursor: not-allowed; background: transparent;
         }
         .card-oos .variant-select[disabled] { opacity: 0.6; }
+        .flavor-box { margin-top: 8px; padding: 10px; border: 1px solid rgba(245,179,1,0.45); background: rgba(245,179,1,0.06); border-radius: 12px; }
+        .flavor-title { font-size: 0.76rem; font-weight: 700; margin-bottom: 8px; color: var(--accent-yellow, #f5b301); display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .flv-req { font-size: 0.6rem; font-weight: 600; background: var(--accent-yellow, #f5b301); color: #000; padding: 1px 7px; border-radius: 10px; }
+        .flv-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .flv-row:last-child { margin-bottom: 0; }
+        .flv-num { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-yellow, #f5b301); color: #000; font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        .flv-field { flex: 1; min-width: 0; }
+        .flv-lab { font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px; }
+        .flavor-box .variant-select { margin-bottom: 0; }
+        .flv-prog { font-size: 0.64rem; font-weight: 700; background: var(--accent-yellow, #f5b301); color: #000; padding: 2px 8px; border-radius: 10px; }
+        .flv-prog.flv-complete { background: var(--green, #2e7d32); color: #fff; }
+        .flv-top { font-size: 0.7rem; color: var(--text-muted); margin: -2px 0 8px; line-height: 1.35; }
+        .flv-extra { display: none; }
+        .flavor-box.open .flv-extra { display: flex; animation: flvFlip 0.28s ease; }
+        @keyframes flvFlip { from { opacity: 0; transform: rotateX(-70deg); } to { opacity: 1; transform: rotateX(0); } }
+        .flv-toggle { width: 100%; margin-top: 8px; padding: 7px; background: transparent; border: 1px solid var(--accent-yellow, #f5b301); color: var(--accent-yellow, #f5b301); border-radius: 8px; font-size: 0.74rem; font-weight: 600; cursor: pointer; }
+        .flavor-done { border-color: var(--green, #2e7d32) !important; }
+        .deal-choice-box { margin: 6px 0; padding: 8px; border: 1px solid rgba(128,128,128,0.35); border-radius: 10px; }
+        .flavor-select.flavor-missing, .flavor-group.flavor-missing { border-color: var(--red, #e53935) !important; box-shadow: 0 0 0 2px rgba(229,57,53,0.35); }
+        .flavor-hint { font-size: 0.68rem; color: var(--text-muted); margin: 2px 0 6px; }
 
         .card {
             background-color: var(--card-bg); border: 1px solid var(--border-color);
@@ -577,7 +597,7 @@
 
     <header>
         <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()">&#127769;</button>
-        <button class="lang-toggle-btn" id="lang-toggle-btn" onclick="cycleLang()">EN</button>
+        <button class="lang-toggle-btn" id="lang-toggle-btn" onclick="cycleLang()">Roman</button>
         <button class="admin-btn" id="admin-btn" onclick="openModal('admin-modal')"><span class="notif-badge" id="order-notif-badge"></span><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="display:block; margin:0 auto 2px;"><path d="M6 10V8a6 6 0 0 1 12 0v2h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h1zm2 0h8V8a4 4 0 0 0-8 0v2z"/></svg><span>Dashboard</span></button>
         <div class="brand-title">Cheesy Delights</div>
         <div class="tagline" data-i18n="tagline">MORE CHEESE. MORE HAPPINESS.</div>
@@ -752,14 +772,15 @@
                     <div class="add-item-box">
                         <div style="font-size:0.8rem; font-weight:bold; color:var(--accent-yellow); margin-bottom:6px;">&#10133; Add New Item or Deal:</div>
                         <input type="text" id="new-item-name" class="input-admin" placeholder="Item / Deal Name">
-                        <textarea id="new-item-desc" class="input-admin" placeholder="Description (optional) — isme kya kya shamil hai, jaise: Chicken, cheese, jalapenos, special sauce" rows="2" style="resize:vertical; font-family:inherit;"></textarea>
+                        <input type="text" id="new-item-flavors" class="input-admin" placeholder="Flavours (optional, comma se): Pepsi, 7Up, Mirinda — khali = category wale flavours" style="font-size:0.78rem;">
+                        <textarea id="new-item-desc" class="input-admin" placeholder="Description (optional) — what is included, e.g. Chicken, cheese, jalapenos, special sauce" rows="2" style="resize:vertical; font-family:inherit;"></textarea>
                         <select id="new-item-cat" class="select-admin" onchange="toggleDealBuilderBox()"></select>
 
                         <div id="deal-builder-box" style="display:none; margin:8px 0; text-align:left; background:#000; border:1px dashed var(--accent-yellow); border-radius:6px; padding:8px;">
-                            <div style="font-size:0.75rem; color:var(--accent-yellow); font-weight:bold; margin-bottom:6px;">&#128230; Deal Components (jo cheezein is deal mein shamil hain):</div>
+                            <div style="font-size:0.75rem; color:var(--accent-yellow); font-weight:bold; margin-bottom:6px;">&#128230; Deal Components (items included in this deal):</div>
                             <div id="deal-component-rows"></div>
                             <button type="button" class="reset-btn" style="border-color:var(--accent-yellow); color:var(--accent-yellow); margin-top:2px;" onclick="addDealComponentRow()">+ Add Component</button>
-                            <div style="font-size:0.68rem; color:var(--text-muted); margin-top:6px;">Har column mein ek category (jaise Pizza, Drinks) chunein, phir us category ka item. Name aur bundle Price neeche khud bharein.</div>
+                            <div style="font-size:0.68rem; color:var(--text-muted); margin-top:6px;">In each row choose a category (e.g. Pizza, Drinks), then an item from it. Enter the deal Name and bundle Price below.</div>
                         </div>
 
                         <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:#ccc; margin:8px 0;">
@@ -769,7 +790,7 @@
 
                         <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:#ccc; margin:8px 0;">
                             <input type="checkbox" id="new-item-fav">
-                            &#9733; Best Seller mark karein
+                            &#9733; Mark as Best Seller
                         </label>
 
                         <input type="number" id="new-item-price" class="input-admin" placeholder="Price (Rs.)">
@@ -791,20 +812,21 @@
                         <h4 style="color:var(--accent-yellow); font-size:0.85rem; text-align:left; margin:0;">Manage Items, Rates & Pictures:</h4>
                         <button class="reset-btn" style="width:auto; padding:4px 10px; font-size:0.68rem; margin:0;" onclick="renderAdminPriceEditor()">&#8635; Refresh List</button>
                     </div>
-                    <div style="font-size:0.68rem; color:var(--text-muted); text-align:left; margin:4px 0 6px;">Agar kisi doosre device se change hua ho to yahan latest dikhane ke liye "Refresh List" dabayein.</div>
+                    <div style="font-size:0.68rem; color:var(--text-muted); text-align:left; margin:4px 0 6px;">If something was changed from another device, tap "Refresh List" to show the latest here.</div>
 
                     <div class="modal-body-scroll" id="admin-price-list" style="max-height:40vh;"></div>
 
                     <button class="checkout-btn" style="background:var(--green); color:#fff; margin-bottom:4px;" onclick="savePricesToStorage()">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M5 3h11l3 3v15H5V3zm2 2v4h8V5H7zm0 8v6h10v-6H7z"/></svg> Save All Changes
                     </button>
+                    <button class="reset-btn" style="border-color:var(--green); color:var(--green); margin-bottom:6px;" onclick="openRestoreModal()">&#9851;&#65039; Restore Data</button>
                     <button class="reset-btn" onclick="resetToDefaultMenu()">Reset Menu To Default</button>
                 </div>
 
                 <!-- ===== SETTINGS TAB ===== -->
                 <div class="dash-tab-content" id="dash-tab-settings" style="display:none;">
                     <div class="setting-row" style="flex-direction:column; align-items:stretch;">
-                        <span style="font-size:0.85rem; margin-bottom:6px;">&#128176; Aaj Ki Sales:</span>
+                        <span style="font-size:0.85rem; margin-bottom:6px;">&#128176; Today's Sales:</span>
                         <div style="display:flex; gap:8px;">
                             <div style="flex:1; background:var(--surface-color); border:1px solid var(--border-color); border-radius:6px; padding:8px; text-align:center;">
                                 <div style="font-size:0.68rem; color:var(--text-muted);">Total Rs.</div>
@@ -910,15 +932,15 @@
             <h3 style="color:var(--accent-yellow); margin-bottom:10px;">&#128241; Install App</h3>
             <div id="install-instructions-ios" style="display:none; text-align:left; font-size:0.85rem; line-height:1.6;">
                 <p><strong>iPhone/iPad (Safari) par:</strong></p>
-                <p>1. Neeche Share button <strong>(&#8679; box se arrow)</strong> par tap karein.</p>
-                <p>2. Neeche scroll kar ke <strong>"Add to Home Screen"</strong> par tap karein.</p>
-                <p>3. <strong>"Add"</strong> dabayein — ab app ka icon home screen par aa jayega.</p>
+                <p>1. Tap the Share button <strong>(&#8679; box with arrow)</strong> at the bottom.</p>
+                <p>2. Scroll down and tap <strong>"Add to Home Screen"</strong>.</p>
+                <p>3. Tap <strong>"Add"</strong> — the app icon will appear on your home screen.</p>
             </div>
             <div id="install-instructions-android" style="display:none; text-align:left; font-size:0.85rem; line-height:1.6;">
                 <p><strong>Android (Chrome) par:</strong></p>
-                <p>1. Top-right corner mein <strong>3 dots (&#8942;)</strong> menu par tap karein.</p>
-                <p>2. <strong>"Install app"</strong> ya <strong>"Add to Home screen"</strong> option select karein.</p>
-                <p>3. <strong>"Install"</strong> dabayein — icon home screen par aa jayega.</p>
+                <p>1. Tap the <strong>3 dots (&#8942;)</strong> menu in the top-right corner.</p>
+                <p>2. Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</p>
+                <p>3. Tap <strong>"Install"</strong> — the icon will appear on your home screen.</p>
             </div>
         </div>
     </div>
@@ -927,6 +949,19 @@
     <div class="toast-box" id="toast-box"></div>
 
     <!-- Custom confirm popup (replaces confirm) -->
+    <div class="modal" id="restore-modal">
+        <div class="modal-content" style="max-width: 360px;">
+            <h3 style="margin:0 0 6px; font-size:1rem;">&#9851;&#65039; Restore Data</h3>
+            <p style="font-size:0.82rem; margin:0 0 6px;">How many days back do you want to restore data from?</p>
+            <input type="number" id="restore-days" class="input-admin" min="1" max="30" value="1" placeholder="Din (1 se 30)">
+            <button class="reset-btn" style="width:100%; margin-bottom:6px;" onclick="restoreMenuFromBackup()">&#127829; Restore Menu &amp; Deals (backup of that day)</button>
+            <button class="reset-btn" style="width:100%; margin-bottom:6px;" onclick="restoreDeletedOrders()">&#128203; Restore Deleted Orders (last N days)</button>
+            <button class="reset-btn" style="width:100%; margin-bottom:6px;" onclick="restoreMissingDefaults()">&#129472; Restore Missing Default Items</button>
+            <div class="flavor-hint">A menu backup is created automatically every day (last 30 days kept). A day's backup exists only if the website was opened at least once that day.</div>
+            <div class="confirm-buttons"><button class="confirm-no-btn" onclick="closeModal('restore-modal')">Close</button></div>
+        </div>
+    </div>
+
     <div class="modal" id="confirm-modal">
         <div class="modal-content" style="max-width: 340px;">
             <p id="confirm-message" style="font-size:0.9rem; margin-top:6px;"></p>
@@ -1116,12 +1151,19 @@
             if (!container) return;
             var html = '';
             for (var i = 0; i < cats.length; i++) {
-                html += '<div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">' +
+                var isDealsCat = cats[i].id === 'deals';
+                html += '<div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid rgba(128,128,128,0.2);">' +
+                    '<div style="display:flex; gap:6px; align-items:center; margin-bottom:4px;">' +
                     '<input type="text" class="input-admin" style="margin-bottom:0;" id="cat-name-' + cats[i].id + '" value="' + escapeHtml(cats[i].label) + '">' +
                     '<button class="add-btn" style="padding:6px 10px;" onclick="renameCategory(\'' + cats[i].id + '\')">Save</button>' +
                     '<button class="del-btn" onclick="deleteCategory(\'' + cats[i].id + '\')"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-2 6h10l-1 12H8L7 9zm3 2v8h1v-8h-1zm3 0v8h1v-8h-1z"/></svg></button>' +
-                '</div>';
+                    '</div>';
+                if (!isDealsCat) {
+                    html += '<input type="text" class="input-admin" style="margin-bottom:0; font-size:0.75rem;" id="cat-fl-' + cats[i].id + '" value="' + escapeHtml(flvCategoryList(cats[i]).join(', ')) + '" placeholder="Flavours (comma separated) \u2014 e.g. Pepsi, 7Up, Mirinda">';
+                }
+                html += '</div>';
             }
+            html = '<div class="flavor-hint">\ud83c\udfa8 Type flavours (comma separated) under a category and press Save. Customers will pick a flavour for items in that category. Leave it empty for categories like Pizza/Burger (the item name is the flavour); in deals, customers choose from those items.</div>' + html;
             container.innerHTML = html;
         }
 
@@ -1129,25 +1171,31 @@
             var input = document.getElementById('cat-name-' + id);
             var newLabel = input.value.trim();
             if (!newLabel) {
-                showToast('Category ka naam khaali nahi ho sakta.');
+                showToast('Category name cannot be empty.');
                 return;
             }
+            var flInp = document.getElementById('cat-fl-' + id);
             var cats = getCategories();
             for (var i = 0; i < cats.length; i++) {
-                if (cats[i].id === id) { cats[i].label = newLabel; break; }
+                if (cats[i].id === id) {
+                    cats[i].label = newLabel;
+                    if (flInp) cats[i].flavors = flvSplit(flInp.value);
+                    break;
+                }
             }
             saveCategories(cats);
             pushSettingsUpdate({ categories: cats });
             renderNavCategories();
             renderCategoryDropdown();
-            showToast('Category ka naam update ho gaya.');
+            renderMenuGrid();
+            showToast('Category saved.');
         }
 
         function deleteCategory(id) {
             var itemCount = menuItems.filter(function(it) { return it.cat === id; }).length;
             var msg = itemCount > 0
-                ? 'Is category mein ' + itemCount + ' item(s) hain. Category delete karne se yeh saare items bhi delete ho jayenge. Continue karein?'
-                : 'Yeh category delete kar dein?';
+                ? 'This category has ' + itemCount + ' item(s). Deleting it will also delete all of them. Continue?'
+                : 'Delete this category?';
             showConfirm(msg, function() {
                 if (itemCount > 0) {
                     menuItems = menuItems.filter(function(it) { return it.cat !== id; });
@@ -1168,7 +1216,7 @@
                 renderCategoryManageList();
                 renderAdminPriceEditor();
                 renderMenuGrid();
-                showToast('Category delete ho gayi hai.');
+                showToast('Category deleted.');
             });
         }
 
@@ -1176,7 +1224,7 @@
             var input = document.getElementById('new-category-name');
             var label = input.value.trim();
             if (!label) {
-                showToast('Category ka naam likhein.');
+                showToast('Enter a category name.');
                 return;
             }
             var cats = getCategories();
@@ -1187,7 +1235,7 @@
             renderNavCategories();
             renderCategoryDropdown();
             renderCategoryManageList();
-            showToast('Nayi category add ho gayi hai.');
+            showToast('New category added.');
         }
 
         var userCart = [];
@@ -1285,7 +1333,7 @@
             document.getElementById('link-tiktok').value = links.tiktok;
             document.getElementById('link-foodpanda').value = links.foodpanda;
             renderSocialLinks();
-            showToast('Social links save ho gaye hain!');
+            showToast('Social links saved!');
         }
 
         function loadSocialLinksIntoAdmin() {
@@ -1324,8 +1372,9 @@
 
         // ---------- Language (Roman / English / Urdu) ----------
         var LANG_KEY = 'cheesy_lang';
-        var currentLang = localStorage.getItem(LANG_KEY) || 'roman';
-        var LANG_LABELS = { roman: 'EN', en: '\u0627\u0631\u062f\u0648', ur: '\u0631\u0648\u0645\u0646' };
+        var currentLang = (localStorage.getItem(LANG_KEY) === 'roman') ? 'roman' : 'en';
+        function flvL(en, rom) { return currentLang === 'roman' ? rom : en; }
+        var LANG_LABELS = { roman: 'English', en: 'Roman' };
 
         var I18N = {
             roman: {},
@@ -1450,13 +1499,14 @@
             });
 
             var btn = document.getElementById('lang-toggle-btn');
-            if (btn) btn.innerText = LANG_LABELS[lang] || 'EN';
+            if (btn) btn.innerText = LANG_LABELS[lang] || 'Roman';
 
             renderFaq();
+            try { renderMenuGrid(); } catch (e) {}
         }
 
         function cycleLang() {
-            var order = ['roman', 'en', 'ur'];
+            var order = ['en', 'roman'];
             var next = order[(order.indexOf(currentLang) + 1) % order.length];
             applyLanguage(next);
         }
@@ -1565,6 +1615,296 @@
         }
 
         // ---------- Menu rendering ----------
+        // ---------- Flavours ----------
+        // Category-level flavours (e.g. Drinks: Pepsi, 7Up) apply to every item in
+        // that category; an item can override them with its own list ("-" = none).
+        // Deals work out which flavours the customer must pick automatically from
+        // the deal's contents, unless the admin typed custom "choices" for it.
+        var DEFAULT_CAT_FLAVORS = { drinks: ['Pepsi', '7Up', 'Mirinda', 'Mountain Dew', 'Sting'] }; // starting list only; edit it in Settings > Manage Categories
+        var flvGroupMap = {};
+        var FLV_STOP = { small:1, medium:1, large:1, regular:1, special:1, extra:1, and:1, the:1, of:1, with:1, pcs:1, pc:1, piece:1, pieces:1, ml:1, litre:1, liter:1, l:1 };
+
+        function flvClean(arr) {
+            var out = [];
+            (arr || []).forEach(function (x) { x = String(x).trim(); if (x && out.indexOf(x) === -1) out.push(x); });
+            return out;
+        }
+        function flvSplit(str) {
+            var t = String(str || '').trim();
+            if (t === '-') return [];
+            return flvClean(t.split(/[,\u060C\n]/));
+        }
+        function flvCategoryList(cat) {
+            if (!cat) return [];
+            if (Array.isArray(cat.flavors)) return flvClean(cat.flavors);
+            return (DEFAULT_CAT_FLAVORS[cat.id] || []).slice();
+        }
+        function flvFindCat(cats, id) {
+            for (var i = 0; i < cats.length; i++) if (cats[i].id === id) return cats[i];
+            return null;
+        }
+        function flvBase(n) {
+            return String(n).replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+        function flvTokens(s) {
+            return String(s).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(function (w) {
+                return w && !/^\d/.test(w) && !FLV_STOP[w];
+            }).map(function (w) { return w.replace(/(es|s)$/, ''); });
+        }
+        function itemFlavors(item, cats) {
+            if (!item || item.cat === 'deals') return [];
+            if (Array.isArray(item.flavors)) return flvClean(item.flavors);
+            return flvCategoryList(flvFindCat(cats, item.cat));
+        }
+        function flvCategoryOptions(cat, items, cats) {
+            var list = flvCategoryList(cat);
+            if (list.length) return list;
+            var seen = {}, names = [];
+            items.forEach(function (it) {
+                if (it.cat !== cat.id || it.outOfStock) return;
+                var b = flvBase(it.name);
+                if (b && !seen[b.toLowerCase()]) { seen[b.toLowerCase()] = 1; names.push(b); }
+            });
+            return names.length >= 2 ? names : [];
+        }
+        function flvParseBullet(b) {
+            var s = String(b).trim();
+            var m = s.match(/^(\d{1,2})\s*[x\u00D7]\s*(.+)$/i) || s.match(/^(\d{1,2})\s+(?![.\d])(.+)$/);
+            if (m) {
+                var q = parseInt(m[1], 10);
+                if (q >= 1 && q <= 6) return { qty: q, text: m[2].trim() };
+            }
+            return { qty: 1, text: s };
+        }
+        function flvStripEmoji(t) {
+            return String(t).replace(/[^\x00-\x7F]/g, '').replace(/\s+/g, ' ').trim();
+        }
+        // pick[i]: '' = auto, 'y' = customer must choose (from that item's category),
+        // 'n' = fixed item, no choice.
+        // Every pickable name in a category: its flavours if set, else its in-stock item names.
+        function flvAllOptions(c, items) {
+            var list = flvCategoryList(c);
+            if (list.length) return list;
+            var seen = {}, names = [];
+            items.forEach(function (it) {
+                if (it.cat !== c.id || it.outOfStock) return;
+                var b = flvBase(it.name);
+                if (b && !seen[b.toLowerCase()]) { seen[b.toLowerCase()] = 1; names.push(b); }
+            });
+            return names;
+        }
+        function autoDealChoices(bullets, items, cats, pick) {
+            var out = [];
+            (bullets || []).forEach(function (b, bi) {
+                var mode = (pick && pick[bi]) || '';
+                if (mode === 'n') return;
+                var force = mode === 'y';
+                var pb = flvParseBullet(b);
+                var base = flvBase(pb.text);
+                if (!base) return;
+                if (mode === 'any') {
+                    var ag = [], au = [];
+                    cats.forEach(function (c) {
+                        if (c.id === 'deals') return;
+                        var o = flvAllOptions(c, items);
+                        if (!o.length) return;
+                        ag.push({ label: flvStripEmoji(c.label) || c.label, list: o });
+                        o.forEach(function (x) { if (au.indexOf(x) === -1) au.push(x); });
+                    });
+                    if (au.length) { var ach = { label: base, count: pb.qty, list: au }; if (ag.length > 1) ach.groups = ag; out.push(ach); }
+                    return;
+                }
+                if (mode.indexOf('c:') === 0) {
+                    var cc = flvFindCat(cats, mode.slice(2));
+                    var co = cc ? flvAllOptions(cc, items) : [];
+                    if (co.length) out.push({ label: base, count: pb.qty, list: co });
+                    return;
+                }
+                var low = base.toLowerCase();
+                var exact = null;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].cat !== 'deals' && flvBase(items[i].name).toLowerCase() === low) { exact = items[i]; break; }
+                }
+                if (exact) {
+                    var fl = itemFlavors(exact, cats);
+                    if (fl.length) { out.push({ label: flvBase(exact.name), count: pb.qty, list: fl }); return; }
+                    if (!force) return;
+                    var ec = flvFindCat(cats, exact.cat);
+                    var eo = ec ? flvCategoryOptions(ec, items, cats) : [];
+                    if (eo.length) out.push({ label: (ec && flvStripEmoji(ec.label)) || base, count: pb.qty, list: eo });
+                    return;
+                }
+                var toks = flvTokens(base);
+                if (!toks.length) return;
+                var best = 0, winners = [];
+                cats.forEach(function (c) {
+                    if (c.id === 'deals') return;
+                    var ct = flvTokens(flvStripEmoji(c.label));
+                    if (!ct.length) return;
+                    var hit = 0;
+                    ct.forEach(function (w) { if (toks.indexOf(w) !== -1) hit++; });
+                    if (!hit) return;
+                    var score = hit / ct.length;
+                    if (score > best + 1e-9) { best = score; winners = [c]; }
+                    else if (Math.abs(score - best) < 1e-9) winners.push(c);
+                });
+                var groups = [], union = [];
+                winners.forEach(function (c) {
+                    var o = flvCategoryOptions(c, items, cats);
+                    if (!o.length) return;
+                    groups.push({ label: flvStripEmoji(c.label) || c.label, list: o });
+                    o.forEach(function (x) { if (union.indexOf(x) === -1) union.push(x); });
+                });
+                if (!groups.length) return;
+                var ch = { label: base, count: pb.qty, list: union };
+                // Matching categories (e.g. Regular + Special Pizza) are merged into ONE list.
+                out.push(ch);
+            });
+            return out;
+        }
+        // "Mix" slots: the customer picks the item TYPE (pizza / burger / sandwich...)
+        // first, then the exact item/flavour of that type.
+        function mixChoices(item, items, cats) {
+            var out = [];
+            (item.mix || []).forEach(function (m) {
+                var groups = [], union = [];
+                (m.cats || []).forEach(function (id) {
+                    var c = flvFindCat(cats, id);
+                    if (!c) return;
+                    var o = flvCategoryOptions(c, items, cats);
+                    if (!o.length) return;
+                    groups.push({ label: flvStripEmoji(c.label) || c.label, list: o });
+                    o.forEach(function (x) { if (union.indexOf(x) === -1) union.push(x); });
+                });
+                if (!groups.length) return;
+                var ch = { label: m.label || 'Item', count: Math.max(1, Math.min(6, parseInt(m.count, 10) || 1)), list: union };
+                if (groups.length > 1) ch.groups = groups;
+                out.push(ch);
+            });
+            return out;
+        }
+        function getDealChoices(item, items, cats) {
+            return getBaseDealChoices(item, items, cats).concat(mixChoices(item, items, cats));
+        }
+        function getBaseDealChoices(item, items, cats) {
+            if (Array.isArray(item.choices)) {
+                return item.choices.filter(function (c) { return c && c.list && c.list.length; }).map(function (c) {
+                    return { label: c.label || 'Flavour', count: Math.max(1, Math.min(6, parseInt(c.count, 10) || 1)), list: flvClean(c.list) };
+                });
+            }
+            var dd = getDealDisplay(item);
+            return autoDealChoices(dd.bullets, items, cats, item.pick);
+        }
+        function choicesToText(choices) {
+            return (choices || []).map(function (c) {
+                return c.label + (c.count > 1 ? ' x' + c.count : '') + ' = ' + (c.list || []).join(', ');
+            }).join('\n');
+        }
+        function parseChoicesText(txt) {
+            var t = String(txt || '').trim();
+            if (t === '-') return [];
+            var out = [];
+            t.split('\n').forEach(function (line) {
+                var m = line.match(/^(.*?)(?:\s*[x\u00D7]\s*(\d+))?\s*=\s*(.+)$/i);
+                if (!m) return;
+                var list = flvSplit(m[3]);
+                if (!list.length) return;
+                out.push({ label: m[1].trim() || 'Flavour', count: Math.max(1, Math.min(6, parseInt(m[2], 10) || 1)), list: list });
+            });
+            return out;
+        }
+
+        function flvUpdateBox(box) {
+            if (!box) return;
+            var prog = box.querySelector('.flv-prog');
+            if (!prog) return;
+            var sels = box.querySelectorAll('select.flavor-select'), done = 0;
+            Array.prototype.forEach.call(sels, function (x) { if (x.value) done++; });
+            prog.textContent = done + '/' + sels.length;
+            prog.classList.toggle('flv-complete', done === sels.length && sels.length > 0);
+        }
+        function flvPicked(sel) {
+            sel.classList.remove('flavor-missing');
+            sel.classList.toggle('flavor-done', !!sel.value);
+            flvUpdateBox(sel.closest('.flavor-box'));
+        }
+        function flvToggle(btn) {
+            var box = btn.closest('.flavor-box');
+            var open = box.classList.toggle('open');
+            btn.textContent = btn.getAttribute(open ? 'data-less' : 'data-more');
+        }
+
+        function flavorPickerHtml(item) {
+            var cats = getCategories();
+            if (item.cat === 'deals') {
+                var ch = getDealChoices(item, menuItems, cats);
+                if (!ch.length) return '';
+                var total = 0;
+                ch.forEach(function (c) { total += c.count; });
+                var VISIBLE = 2; // first 3 choices shown; the rest open with "Show all"
+                var h = '<div class="flavor-box" data-flavor-for="' + item.id + '">' +
+                    '<div class="flavor-title"><span>\ud83c\udfaf ' + flvL('Customize your deal', 'Apni deal customize karein') + '</span>' +
+                    '<span class="flv-prog" data-total="' + total + '">0/' + total + '</span></div>';
+                if (total > VISIBLE) {
+                    h += '<div class="flv-top">' + flvL('Choose ' + total + ' items \u2014 first ' + VISIBLE + ' shown below, tap "Show all" for the rest.',
+                        total + ' items chunein \u2014 pehle ' + VISIBLE + ' neeche hain, baqi ke liye "Sab dekhein" dabayein.') + '</div>';
+                }
+                var stepNo = 0;
+                ch.forEach(function (c, ci) {
+                    for (var k = 0; k < c.count; k++) {
+                        stepNo++;
+                        var sid = 'dch-' + item.id + '-' + ci + '-' + k;
+                        var lab = c.label + (c.count > 1 ? ' ' + (k + 1) : '');
+                        h += '<div class="flv-row' + (stepNo > VISIBLE ? ' flv-extra' : '') + '"><span class="flv-num">' + stepNo + '</span><div class="flv-field"><div class="flv-lab">' + escapeHtml(lab) + '</div>' +
+                            '<select class="variant-select flavor-select" id="' + sid + '" data-label="' + escapeHtml(c.label) + '" onchange="flvPicked(this)"' + (item.outOfStock ? ' disabled' : '') + '>' +
+                            '<option value="">' + flvL('Choose\u2026', 'Chunein\u2026') + '</option>';
+                        if (c.groups) {
+                            c.groups.forEach(function (g) {
+                                h += '<optgroup label="' + escapeHtml(g.label) + '">';
+                                g.list.forEach(function (o) { h += '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>'; });
+                                h += '</optgroup>';
+                            });
+                        } else {
+                            c.list.forEach(function (o) { h += '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>'; });
+                        }
+                        h += '</select></div></div>';
+                    }
+                });
+                if (total > VISIBLE) {
+                    h += '<button type="button" class="flv-toggle" onclick="flvToggle(this)" data-more="' + escapeHtml(flvL('Show all ' + total + ' \u25be', 'Sab ' + total + ' dekhein \u25be')) + '" data-less="' + escapeHtml(flvL('Show less \u25b4', 'Kam dekhein \u25b4')) + '">' + flvL('Show all ' + total + ' \u25be', 'Sab ' + total + ' dekhein \u25be') + '</button>';
+                }
+                return h + '</div>';
+            }
+            var fl = itemFlavors(item, cats);
+            if (!fl.length) return '';
+            var h2 = '<select class="variant-select flavor-select" id="fl-' + item.id + '" data-label="Flavour" onchange="flvPicked(this)"' + (item.outOfStock ? ' disabled' : '') + '>' +
+                '<option value="">\ud83c\udfa8 ' + flvL('Choose flavour', 'Flavour chunein') + '\u2026</option>';
+            fl.forEach(function (o) { h2 += '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>'; });
+            return h2 + '</select>';
+        }
+
+        // Reads the customer's flavour picks for an item. Returns {ok:false} if any
+        // is still empty (and highlights it), else {ok:true, suffix:' - Pepsi'}.
+        function collectFlavorSuffix(item) {
+            var sels = document.querySelectorAll('select.flavor-select[id^="fl-' + item.id + '"], select.flavor-select[id^="dch-' + item.id + '-"]');
+            var picks = [], order = [], groups = {}, missing = null;
+            Array.prototype.forEach.call(sels, function (sel) {
+                var okId = (sel.id === 'fl-' + item.id) || sel.id.indexOf('dch-' + item.id + '-') === 0;
+                if (!okId) return;
+                sel.classList.remove('flavor-missing');
+                if (!sel.value) { sel.classList.add('flavor-missing'); if (!missing) missing = sel; return; }
+                var lab = sel.getAttribute('data-label') || 'Flavour';
+                if (!groups[lab]) { groups[lab] = []; order.push(lab); }
+                groups[lab].push(sel.value);
+            });
+            if (missing) return { ok: false, el: missing };
+            if (!order.length) return { ok: true, suffix: '' };
+            if (item.cat === 'deals') {
+                return { ok: true, suffix: ' [' + order.map(function (l) { return l + ': ' + groups[l].join(', '); }).join(' | ') + ']' };
+            }
+            return { ok: true, suffix: ' - ' + groups['Flavour'].join(', ') };
+        }
+
         function getDealDisplay(item) {
             if (item.components && item.components.length) {
                 return { title: item.name, bullets: item.components };
@@ -1583,7 +1923,12 @@
         function renderMenuGrid(selectedCat) {
             currentCategory = selectedCat || currentCategory;
             var grid = document.getElementById('menu-grid');
+            // Remember what the customer already picked (size/flavour) so a live
+            // Firestore refresh doesn't reset their selections.
+            var savedSel = {};
+            Array.prototype.forEach.call(grid.querySelectorAll('select[id]'), function (sel) { savedSel[sel.id] = sel.value; });
             grid.innerHTML = '';
+            flvGroupMap = {};
 
             var searchTerm = (document.getElementById('search-box').value || '').trim().toLowerCase();
             var shown = 0;
@@ -1634,15 +1979,24 @@
                         if (!(variant in item.prices)) continue;
                         html += '<option value="' + escapeHtml(variant) + ':' + item.prices[variant] + '">' + escapeHtml(variant) + ' - Rs. ' + item.prices[variant] + '</option>';
                     }
-                    html += '</select></div>';
+                    html += '</select>' + flavorPickerHtml(item) + '</div>';
                     html += '<div class="card-footer"><span class="price">' + (isOOS ? '' : 'Select Option') + '</span>' + addBtnHtml + '</div>';
                 } else {
-                    html += '</div>';
+                    html += flavorPickerHtml(item) + '</div>';
                     html += '<div class="card-footer"><span class="price">Rs. ' + item.price + '</span>' + addBtnHtml + '</div>';
                 }
 
                 card.innerHTML = html;
                 grid.appendChild(card);
+                var _fb = card.querySelector('.flavor-box');
+                Array.prototype.forEach.call(card.querySelectorAll('select[id]'), function (sel) {
+                    if (savedSel[sel.id] !== undefined) {
+                        sel.value = savedSel[sel.id];
+                        if (sel.value !== savedSel[sel.id]) sel.value = '';
+                        if (sel.classList.contains('flavor-select') && sel.value) sel.classList.add('flavor-done');
+                    }
+                });
+                if (_fb) flvUpdateBox(_fb);
             }
 
             if (shown === 0) {
@@ -1731,6 +2085,16 @@
                 itemName += ' (' + parts[0] + ')';
                 itemPrice = parseInt(parts[1]);
             }
+
+            var flv = collectFlavorSuffix(foundItem);
+            if (!flv.ok) {
+                var bx = flv.el.closest ? flv.el.closest('.flavor-box') : null;
+                if (bx) { bx.classList.add('open'); var tg = bx.querySelector('.flv-toggle'); if (tg) tg.textContent = tg.getAttribute('data-less'); }
+                showToast(flvL('Please choose your flavour \ud83c\udfa8', 'Pehle flavour chunein \ud83c\udfa8'));
+                try { flv.el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                return;
+            }
+            itemName += flv.suffix;
 
             var existing = false;
             for (var k = 0; k < userCart.length; k++) {
@@ -1998,7 +2362,7 @@
             var orders = getOrders();
 
             if (orders.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-muted); font-size:0.75rem; text-align:center; padding:10px;">Abhi tak koi order nahi aaya.</div>';
+                container.innerHTML = '<div style="color:var(--text-muted); font-size:0.75rem; text-align:center; padding:10px;">No orders yet.</div>';
                 return;
             }
 
@@ -2033,17 +2397,157 @@
             var next = current === 'completed' ? 'pending' : 'completed';
             db.collection('orders').doc(String(id)).update({ status: next }).catch(function (err) {
                 console.warn('Order status sync failed (offline?)', err);
-                showToast('Internet na hone ki wajah se status update nahi ho saka.');
+                showToast('Could not update status — no internet connection.');
             });
         }
 
+        // ---------- Backup & restore ----------
+        function dayKey(d) {
+            function z(n) { return (n < 10 ? '0' : '') + n; }
+            return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+        }
+        function ensureDailyBackup() {
+            if (!db || !menuSynced) return;
+            var key = dayKey(new Date());
+            try { if (localStorage.getItem('cheesy_backup_day') === key) return; } catch (e) {}
+            var ref = db.collection('backups').doc(key);
+            ref.get().then(function (doc) {
+                if (doc.exists) { try { localStorage.setItem('cheesy_backup_day', key); } catch (e) {} return; }
+                var items = menuItems.map(function (it) { var c = JSON.parse(JSON.stringify(it)); delete c.image; return c; });
+                return ref.set({ day: key, createdAt: Date.now(), items: JSON.stringify(items), categories: JSON.stringify(getCategories()) }).then(function () {
+                    try { localStorage.setItem('cheesy_backup_day', key); } catch (e) {}
+                    return db.collection('backups').get().then(function (snap) {
+                        var ids = [];
+                        snap.forEach(function (d) { ids.push(d.id); });
+                        ids.sort();
+                        while (ids.length > 30) db.collection('backups').doc(ids.shift()).delete();
+                    });
+                });
+            }).catch(function (err) { console.warn('Backup failed', err); });
+        }
+
+        function openRestoreModal() { openModal('restore-modal'); }
+        function getRestoreDays() {
+            var n = parseInt(document.getElementById('restore-days').value, 10);
+            if (!(n >= 1 && n <= 30)) { showToast('Enter a number of days between 1 and 30.'); return null; }
+            return n;
+        }
+
+        function restoreMenuFromBackup() {
+            var n = getRestoreDays();
+            if (!n || !db) return;
+            var t = new Date(); t.setDate(t.getDate() - n);
+            var tk = dayKey(t);
+            db.collection('backups').get().then(function (snap) {
+                var ids = [], docs = {};
+                snap.forEach(function (d) { ids.push(d.id); docs[d.id] = d.data(); });
+                ids.sort();
+                if (!ids.length) { showToast('No backup exists yet. Backups will start from today.'); return; }
+                var pick = null;
+                ids.forEach(function (id) { if (id <= tk) pick = id; });
+                var note = '';
+                if (!pick) { pick = ids[0]; note = ' (no backup that old; the oldest one, ' + pick + ', will be used)'; }
+                showConfirm('Menu and deals will be restored to the backup of ' + pick + note + '. The current menu will be replaced. Confirm?', function () {
+                    doRestoreMenu(docs[pick]);
+                });
+            }).catch(function (err) { console.warn(err); showToast('Could not load backup. Please check your internet.'); });
+        }
+
+        function doRestoreMenu(b) {
+            var items, cats;
+            try { items = JSON.parse(b.items); cats = JSON.parse(b.categories); } catch (e) { showToast('The backup is corrupted.'); return; }
+            var curImg = {};
+            menuItems.forEach(function (it) { if (it.image) curImg[String(it.id)] = it.image; });
+            items.forEach(function (it) { if (!it.image && curImg[String(it.id)]) it.image = curImg[String(it.id)]; });
+            var keep = {};
+            items.forEach(function (it) { keep[String(it.id)] = 1; });
+            var batch = db.batch();
+            menuItems.forEach(function (it) { if (!keep[String(it.id)]) batch.delete(db.collection('menuItems').doc(String(it.id))); });
+            items.forEach(function (it) { batch.set(db.collection('menuItems').doc(String(it.id)), it); });
+            batch.commit().then(function () {
+                menuItems = items;
+                try { localStorage.setItem(MENU_KEY, JSON.stringify(menuItems)); } catch (e) {}
+                saveCategories(cats);
+                pushSettingsUpdate({ categories: cats });
+                renderNavCategories(); renderCategoryDropdown(); renderCategoryManageList(); renderAdminPriceEditor(); renderMenuGrid();
+                closeModal('restore-modal');
+                showToast('Menu and deals restored.');
+            }).catch(function (err) { console.warn(err); showToast('Restore failed. Please check your internet.'); });
+        }
+
+        function restoreDeletedOrders() {
+            var n = getRestoreDays();
+            if (!n || !db) return;
+            var since = Date.now() - n * 86400000;
+            db.collection('deletedOrders').where('deletedAt', '>=', since).get().then(function (snap) {
+                if (snap.empty) { showToast('No orders were deleted in the last ' + n + ' day(s).'); return; }
+                var list = [];
+                snap.forEach(function (d) { list.push(d.data()); });
+                showConfirm(list.length + ' deleted order(s) will be restored. Confirm?', function () {
+                    var batch = db.batch();
+                    list.slice(0, 200).forEach(function (o) {
+                        var c = Object.assign({}, o); delete c.deletedAt;
+                        batch.set(db.collection('orders').doc(String(o.id)), c);
+                        batch.delete(db.collection('deletedOrders').doc(String(o.id)));
+                    });
+                    batch.commit().then(function () {
+                        closeModal('restore-modal');
+                        showToast('Orders restored' + (list.length > 200 ? ' (first 200; press again for the rest)' : '') + '.');
+                    }).catch(function (err) { console.warn(err); showToast('Restore failed.'); });
+                });
+            }).catch(function (err) { console.warn(err); showToast('Could not load orders. Please check your internet.'); });
+        }
+
+        function restoreMissingDefaults() {
+            var have = {};
+            menuItems.forEach(function (it) { have[String(it.id)] = 1; });
+            var missing = defaultMenuItems.filter(function (it) { return !have[String(it.id)]; });
+            if (!missing.length) { showToast('No default items are missing.'); return; }
+            showConfirm(missing.length + ' default item(s) will be added back. Confirm?', function () {
+                var maxIdx = menuItems.reduce(function (m, it) { return (typeof it.orderIndex === 'number' && it.orderIndex > m) ? it.orderIndex : m; }, 0);
+                var cats = getCategories(), catIds = cats.map(function (c) { return c.id; });
+                var addCats = false;
+                missing.forEach(function (it, i) {
+                    var c = JSON.parse(JSON.stringify(it));
+                    c.orderIndex = maxIdx + 1 + i;
+                    menuItems.push(c);
+                    if (catIds.indexOf(c.cat) === -1) {
+                        var dc = defaultCategories.filter(function (d) { return d.id === c.cat; })[0];
+                        if (dc) { cats.push(dc); catIds.push(dc.id); addCats = true; }
+                    }
+                    if (db) db.collection('menuItems').doc(String(c.id)).set(c).catch(function (err) { console.warn(err); });
+                });
+                try { localStorage.setItem(MENU_KEY, JSON.stringify(menuItems)); } catch (e) {}
+                if (addCats) { saveCategories(cats); pushSettingsUpdate({ categories: cats }); renderNavCategories(); renderCategoryDropdown(); renderCategoryManageList(); }
+                renderAdminPriceEditor(); renderMenuGrid();
+                closeModal('restore-modal');
+                showToast(missing.length + ' item(s) added back.');
+            });
+        }
+
+        // Deleted orders are archived (kept 'deletedOrders') so they can be restored.
+        function archiveAndDeleteOrders(list) {
+            var chunks = [];
+            for (var i = 0; i < list.length; i += 150) chunks.push(list.slice(i, i + 150));
+            return Promise.all(chunks.map(function (ch) {
+                var b = db.batch();
+                ch.forEach(function (o) {
+                    b.set(db.collection('deletedOrders').doc(String(o.id)), Object.assign({}, o, { deletedAt: Date.now() }));
+                    b.delete(db.collection('orders').doc(String(o.id)));
+                });
+                return b.commit();
+            }));
+        }
+
         function deleteOrderRecord(id) {
-            showConfirm('Yeh order record delete kar dein?', function() {
-                db.collection('orders').doc(String(id)).delete().then(function () {
-                    showToast('Order record delete ho gaya.');
+            showConfirm('Delete this order record?', function() {
+                var found = getOrders().filter(function (o) { return String(o.id) === String(id); });
+                var job = found.length ? archiveAndDeleteOrders(found) : db.collection('orders').doc(String(id)).delete();
+                job.then(function () {
+                    showToast('Order record deleted.');
                 }).catch(function (err) {
                     console.warn(err);
-                    showToast('Delete fail hui, internet check kar ke dobara try karein.');
+                    showToast('Delete failed. Please check your internet and try again.');
                 });
             });
         }
@@ -2051,14 +2555,12 @@
         function clearAllOrders() {
             var orders = getOrders();
             if (orders.length === 0) return;
-            showConfirm('Poori orders history clear kar dein?', function() {
-                var clearBatch = db.batch();
-                orders.forEach(function (o) { clearBatch.delete(db.collection('orders').doc(String(o.id))); });
-                clearBatch.commit().then(function () {
-                    showToast('Orders history clear ho gayi hai.');
+            showConfirm('Clear the entire orders history?', function() {
+                archiveAndDeleteOrders(orders).then(function () {
+                    showToast('Orders history cleared.');
                 }).catch(function (err) {
                     console.warn(err);
-                    showToast('Clear fail hui, internet check kar ke dobara try karein.');
+                    showToast('Clear failed. Please check your internet and try again.');
                 });
             });
         }
@@ -2164,7 +2666,7 @@
                 return saveDone;
             }).catch(function (err) {
                 console.warn('Order send failed', err);
-                showToast('Order save mein masla hua, internet check kar ke dobara try karein.');
+                showToast('There was a problem saving the order. Please check your internet and try again.');
                 if (waWindow) waWindow.close();
             });
         }
@@ -2196,12 +2698,12 @@
 
         // ---------- Admin ----------
         function resetAdminCredentials() {
-            showConfirm("Yeh Username 'admin' aur Password '1234' par reset kar dega. Continue karein?", function() {
+            showConfirm("This will reset the Username to 'admin' and the Password to '1234'. Continue?", function() {
                 localStorage.removeItem(USERNAME_KEY);
                 localStorage.removeItem(PIN_KEY);
                 document.getElementById('admin-username').value = '';
                 document.getElementById('admin-pin').value = '';
-                showToast("Reset ho gaya! Ab Username 'admin' aur Password '1234' se login karein.");
+                showToast("Reset done! Now log in with Username 'admin' and Password '1234'.");
             });
         }
 
@@ -2252,25 +2754,25 @@
         function changeAdminUsername() {
             var newUsername = document.getElementById('new-username-input').value.trim();
             if (newUsername.length < 3) {
-                showToast('Username kam az kam 3 characters ka hona chahiye.');
+                showToast('Username must be at least 3 characters.');
                 return;
             }
             localStorage.setItem(USERNAME_KEY, newUsername);
             pushSettingsUpdate({ adminUsername: newUsername });
             document.getElementById('new-username-input').value = '';
-            showToast('Username update ho gaya hai. Agli baar yeh naya Username use karein.');
+            showToast('Username updated. Use the new Username next time.');
         }
 
         function changeAdminPin() {
             var newPin = document.getElementById('new-pin-input').value.trim();
             if (newPin.length < 4) {
-                showToast('Password kam az kam 4 characters ka hona chahiye.');
+                showToast('Password must be at least 4 characters.');
                 return;
             }
             localStorage.setItem(PIN_KEY, newPin);
             pushSettingsUpdate({ adminPin: newPin });
             document.getElementById('new-pin-input').value = '';
-            showToast('Password update ho gaya hai. Agli baar yeh naya Password use karein.');
+            showToast('Password updated. Use the new Password next time.');
         }
 
         // ---------- Call & WhatsApp number ----------
@@ -2309,14 +2811,14 @@
             var newPhone = document.getElementById('new-phone-input').value.trim();
             var testDigits = newPhone.replace(/\D/g, '');
             if (testDigits.length < 10) {
-                showToast('Please sahi mobile number enter karein.');
+                showToast('Please enter a valid mobile number.');
                 return;
             }
             localStorage.setItem(PHONE_KEY, newPhone);
             pushSettingsUpdate({ phoneNumber: newPhone });
             document.getElementById('new-phone-input').value = '';
             renderPhoneNumber();
-            showToast('WhatsApp number update ho gaya hai.');
+            showToast('WhatsApp number updated.');
         }
 
         // ---------- Call number (separate from WhatsApp) ----------
@@ -2338,14 +2840,14 @@
             var newCall = document.getElementById('new-call-input').value.trim();
             var testDigits = newCall.replace(/\D/g, '');
             if (testDigits.length < 10) {
-                showToast('Please sahi mobile number enter karein.');
+                showToast('Please enter a valid mobile number.');
                 return;
             }
             localStorage.setItem(CALL_KEY, newCall);
             pushSettingsUpdate({ callNumber: newCall });
             document.getElementById('new-call-input').value = '';
             renderCallNumber();
-            showToast('Call number update ho gaya hai.');
+            showToast('Call number updated.');
         }
 
         function renderAdminPriceEditor() {
@@ -2366,7 +2868,7 @@
                 html += '<button class="reset-btn" style="width:100%; margin-bottom:6px; ' + (isOOS ? 'border-color:var(--red); color:var(--red);' : '') + '" onclick="toggleItemStock(' + item.id + ')">' + (isOOS ? '&#10060; Out of Stock \u2014 Tap to Mark Available' : '&#9989; In Stock \u2014 Tap to Mark Out of Stock') + '</button>';
 
                 var isFav = !!item.fav;
-                html += '<button class="reset-btn" style="width:100%; margin-bottom:6px; ' + (isFav ? 'border-color:var(--accent-yellow); color:var(--accent-yellow);' : '') + '" onclick="toggleItemBestSeller(' + item.id + ')">' + (isFav ? '&#9733; Best Seller ON \u2014 Tap to Remove' : '&#9734; Best Seller nahi \u2014 Tap to Mark') + '</button>';
+                html += '<button class="reset-btn" style="width:100%; margin-bottom:6px; ' + (isFav ? 'border-color:var(--accent-yellow); color:var(--accent-yellow);' : '') + '" onclick="toggleItemBestSeller(' + item.id + ')">' + (isFav ? '&#9733; Best Seller ON \u2014 Tap to Remove' : '&#9734; Not a Best Seller \u2014 Tap to Mark') + '</button>';
 
                 html += '<div class="item-image-admin-row">' +
                     '<img id="item-img-preview-' + item.id + '" src="' + (item.image || '') + '" style="' + (item.image ? '' : 'display:none;') + '">' +
@@ -2378,11 +2880,39 @@
 
                 html += '<textarea class="input-admin" id="desc-input-' + item.id + '" placeholder="Description (optional)" rows="2" style="resize:vertical; font-family:inherit; font-size:0.78rem;">' + escapeHtml(item.description || '') + '</textarea>';
 
+                var adminCats = getCategories();
                 if (item.cat === 'deals') {
                     var dealDisp = getDealDisplay(item);
                     if (dealDisp.bullets) {
                         html += '<div style="font-size:0.7rem; color:var(--text-muted); margin:-2px 0 6px;">Includes: ' + dealDisp.bullets.map(escapeHtml).join(', ') + '</div>';
                     }
+                    var dMode = dealChoiceMode(item);
+                    var dMix = (item.mix && item.mix[0]) || { count: 1, cats: [] };
+                    var dNow = getDealChoices(item, menuItems, adminCats);
+                    html += '<div class="deal-choice-box">' +
+                        '<div class="flavor-title">🎯 Customer choice</div>' +
+                        '<select class="select-admin" id="dmode-' + item.id + '" onchange="dealModeChange(' + item.id + ')" style="margin-bottom:6px;">' +
+                        '<option value="auto"' + (dMode === 'auto' ? ' selected' : '') + '>Auto — ask for flavours/items based on the deal contents</option>' +
+                        '<option value="pick"' + (dMode === 'pick' ? ' selected' : '') + '>Customer picks any items (mix)</option>' +
+                        '<option value="none"' + (dMode === 'none' ? ' selected' : '') + '>No choice (deal is fixed)</option>' +
+                        (dMode === 'custom' ? '<option value="custom" selected>Old custom setting (keep as is)</option>' : '') +
+                        '</select>' +
+                        '<div id="dpick-' + item.id + '" style="display:' + (dMode === 'pick' ? 'block' : 'none') + ';">' +
+                        '<div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; margin-bottom:6px;">How many items to pick? ' +
+                        '<input type="number" class="input-admin" id="dcount-' + item.id + '" min="1" max="6" value="' + (dMix.count || 1) + '" style="width:64px; margin:0;"></div>' +
+                        '<div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:4px;">From which categories? (tick them)</div>' +
+                        '<div style="display:flex; flex-wrap:wrap; gap:6px 12px; font-size:0.76rem;">' +
+                        adminCats.filter(function (c) { return c.id !== 'deals'; }).map(function (c) {
+                            return '<label style="display:flex; align-items:center; gap:4px;"><input type="checkbox" class="dcat-' + item.id + '" value="' + escapeHtml(c.id) + '"' + ((dMix.cats || []).indexOf(c.id) !== -1 ? ' checked' : '') + '> ' + escapeHtml(flvStripEmoji(c.label) || c.label) + '</label>';
+                        }).join('') + '</div></div>' +
+                        '<div class="flavor-hint" style="margin:6px 0 0;">Customer will currently see: ' +
+                        (dNow.length ? dNow.map(function (c) { return escapeHtml(c.label) + ' ×' + c.count; }).join(', ') : 'no choices') + '</div>' +
+                        '</div>';
+                } else {
+                    var inh = flvCategoryList(flvFindCat(adminCats, item.cat));
+                    var flShown = Array.isArray(item.flavors) ? (item.flavors.length ? item.flavors.join(', ') : '-') : '';
+                    html += '<input type="text" class="input-admin" id="fl-input-' + item.id + '" value="' + escapeHtml(flShown) + '" placeholder="Flavours (comma separated) \u2014 empty = use category flavours, - = none" style="font-size:0.75rem;">' +
+                        (inh.length ? '<div class="flavor-hint" style="margin-top:-4px;">Category flavours: ' + escapeHtml(inh.join(', ')) + '</div>' : '');
                 }
 
                 if (item.prices) {
@@ -2405,6 +2935,41 @@
                 box.innerHTML = html;
                 container.appendChild(box);
             }
+        }
+
+        function dealChoiceMode(item) {
+            var hasMix = Array.isArray(item.mix) && item.mix.length;
+            var hasChoices = Array.isArray(item.choices);
+            var pickOther = Array.isArray(item.pick) && item.pick.some(function (v) { return v && v !== 'n'; });
+            if (hasMix && item.mix.length === 1 && !hasChoices && !pickOther) return 'pick';
+            if (hasChoices && !item.choices.length && !hasMix && !pickOther) return 'none';
+            if (!hasMix && !hasChoices && !(Array.isArray(item.pick) && item.pick.length)) return 'auto';
+            return 'custom';
+        }
+        function dealModeChange(id) {
+            var m = document.getElementById('dmode-' + id).value;
+            document.getElementById('dpick-' + id).style.display = (m === 'pick') ? 'block' : 'none';
+        }
+
+        function mixRowHtml(m, cats) {
+            m = m || {};
+            var sel = m.cats || [];
+            var boxes = cats.filter(function (c) { return c.id !== 'deals'; }).map(function (c) {
+                return '<label style="display:flex; align-items:center; gap:3px;"><input type="checkbox" class="mix-cat" value="' + escapeHtml(c.id) + '"' + (sel.indexOf(c.id) !== -1 ? ' checked' : '') + '> ' + escapeHtml(flvStripEmoji(c.label) || c.label) + '</label>';
+            }).join('');
+            return '<div class="mix-row" style="border:1px solid rgba(128,128,128,0.3); border-radius:8px; padding:6px; margin-bottom:6px;">' +
+                '<div style="display:flex; gap:6px; align-items:center; margin-bottom:5px;">' +
+                '<input type="text" class="input-admin mix-label" style="margin:0;" placeholder="Name (e.g. Your choice of item)" value="' + escapeHtml(m.label || '') + '">' +
+                '<input type="number" class="input-admin mix-count" min="1" max="6" style="width:62px; margin:0;" value="' + (m.count || 1) + '" title="Kitne items">' +
+                '<button type="button" class="variant-del-btn" onclick="this.closest(\'.mix-row\').remove()" title="Hatayein">&times;</button></div>' +
+                '<div style="display:flex; flex-wrap:wrap; gap:4px 12px; font-size:0.72rem;">' + boxes + '</div></div>';
+        }
+        function addMixRow(itemId) {
+            var wrap = document.getElementById('mix-wrap-' + itemId);
+            if (!wrap) return;
+            var d = document.createElement('div');
+            d.innerHTML = mixRowHtml({ count: 1 }, getCategories());
+            wrap.appendChild(d.firstChild);
         }
 
         // One editable size-variant row: size NAME (e.g. "Small", "Medium", "14 inch")
@@ -2441,7 +3006,7 @@
             if (!grid) return;
             var rows = grid.querySelectorAll('.admin-variant-row');
             if (rows.length <= 1) {
-                showToast('Kam az kam 1 size zaroori hai. Is item ko delete karne ke liye "Delete" button use karein.');
+                showToast('At least 1 size is required. Use the "Delete" button to remove this item.');
                 return;
             }
             var row = grid.querySelector('.admin-variant-row[data-vidx="' + idx + '"]');
@@ -2494,13 +3059,13 @@
                     localStorage.setItem(MENU_KEY, JSON.stringify(menuItems));
                     db.collection('menuItems').doc(String(item.id)).set(item).catch(function (err) {
                         console.warn('Image sync failed (offline?)', err);
-                        showToast('Pic save local hui, internet na hone ki wajah se dusre devices par abhi nahi jayegi.');
+                        showToast('Pic saved locally; it will not reach other devices until you are online.');
                     });
                     renderAdminPriceEditor();
                     renderMenuGrid();
-                    showToast('Pic upload ho gayi hai!');
+                    showToast('Pic uploaded!');
                 } catch (e) {
-                    showToast('Storage full hai — kuch purani pics hata kar dobara try karein.');
+                    showToast('Storage is full — remove some old pics and try again.');
                 }
             });
         }
@@ -2551,7 +3116,7 @@
 
         function dealBuilderCategoryOptions() {
             var cats = getCategories().filter(function(c) { return c.id !== 'deals'; });
-            var html = '';
+            var html = '<option value="__any">\ud83c\udfaf Any item (customer chooses)</option>';
             for (var i = 0; i < cats.length; i++) {
                 html += '<option value="' + cats[i].id + '">' + escapeHtml(cats[i].label) + '</option>';
             }
@@ -2565,6 +3130,7 @@
             row.style.cssText = 'display:flex; gap:4px; align-items:center; margin-bottom:5px; flex-wrap:wrap;';
             row.innerHTML =
                 '<select class="input-admin deal-comp-cat" style="margin-bottom:0; flex:1; min-width:90px;" onchange="refreshDealCompItems(this)">' + dealBuilderCategoryOptions() + '</select>' +
+                '<select class="input-admin deal-comp-mode" style="margin-bottom:0; flex:1; min-width:90px;" onchange="refreshDealCompItems(this)"><option value="fixed">Fixed item</option><option value="pick">Customer chooses</option></select>' +
                 '<select class="input-admin deal-comp-item" style="margin-bottom:0; flex:2; min-width:120px;"></select>' +
                 '<input type="number" class="input-admin deal-comp-qty" style="margin-bottom:0; width:48px;" value="1" min="1">' +
                 '<button type="button" class="del-btn" onclick="this.parentElement.remove()">&#10005;</button>';
@@ -2575,7 +3141,12 @@
         function refreshDealCompItems(catSelectEl) {
             var row = catSelectEl.closest('.deal-component-row');
             var itemSelect = row.querySelector('.deal-comp-item');
-            var catId = catSelectEl.value;
+            var catId = row.querySelector('.deal-comp-cat').value;
+            var modeSel = row.querySelector('.deal-comp-mode');
+            if (catId === '__any') modeSel.value = 'pick';
+            var isPick = modeSel.value === 'pick';
+            itemSelect.style.display = isPick ? 'none' : '';
+            if (isPick) { itemSelect.innerHTML = '<option value="">-</option>'; return; }
             var items = menuItems.filter(function(it) { return it.cat === catId; });
             var html = '';
             for (var i = 0; i < items.length; i++) {
@@ -2591,27 +3162,43 @@
                     html += '<option value="' + it.id + '::">' + escapeHtml(it.name) + ' \u2014 Rs.' + it.price + '</option>';
                 }
             }
-            itemSelect.innerHTML = html || '<option value="">(Is category mein koi item nahi)</option>';
+            itemSelect.innerHTML = html || '<option value="">(No items in this category)</option>';
         }
 
-        function collectDealComponents() {
+        function collectDealComponentsFull() {
             var rows = document.querySelectorAll('#deal-component-rows .deal-component-row');
-            var parts = [];
+            var parts = [], pick = [];
             rows.forEach(function(row) {
                 var itemSelect = row.querySelector('.deal-comp-item');
                 var qtyInput = row.querySelector('.deal-comp-qty');
+                var catId = row.querySelector('.deal-comp-cat').value;
+                var isPick = row.querySelector('.deal-comp-mode').value === 'pick';
+                var qty = parseInt(qtyInput.value) || 1;
+                if (isPick) {
+                    if (catId === '__any') {
+                        parts.push(qty + 'x Any item (your choice)');
+                        pick.push('any');
+                    } else {
+                        var cobj = getCategories().find(function(c) { return c.id === catId; });
+                        parts.push(qty + 'x ' + ((cobj && flvStripEmoji(cobj.label)) || 'Item') + ' (your choice)');
+                        pick.push('c:' + catId);
+                    }
+                    return;
+                }
                 if (!itemSelect.value) return;
                 var pieces = itemSelect.value.split('::');
                 var itemId = pieces[0];
                 var variant = pieces[1] || '';
                 var item = menuItems.find(function(it) { return String(it.id) === String(itemId); });
                 if (!item) return;
-                var qty = parseInt(qtyInput.value) || 1;
                 var label = item.name + (variant ? ' (' + variant + ')' : '');
                 parts.push(qty + 'x ' + label);
+                pick.push('');
             });
-            return parts;
+            return { parts: parts, pick: pick };
         }
+
+        function collectDealComponents() { return collectDealComponentsFull().parts; }
 
         function resetDealBuilder() {
             document.getElementById('deal-component-rows').innerHTML = '';
@@ -2625,7 +3212,7 @@
             var hasVariants = document.getElementById('new-item-has-variants').checked;
 
             if (!name) {
-                showToast('Please item ka Name enter karein!');
+                showToast('Please enter the item Name!');
                 return;
             }
 
@@ -2636,8 +3223,16 @@
             if (desc) newItem.description = desc;
 
             if (cat === 'deals') {
-                var comps = collectDealComponents();
-                if (comps.length > 0) newItem.components = comps;
+                var dc = collectDealComponentsFull();
+                if (dc.parts.length > 0) {
+                    newItem.components = dc.parts;
+                    if (dc.pick.some(function (x) { return x; })) newItem.pick = dc.pick;
+                }
+            }
+
+            if (cat !== 'deals') {
+                var newFl = document.getElementById('new-item-flavors').value.trim();
+                if (newFl) newItem.flavors = flvSplit(newFl);
             }
 
             if (document.getElementById('new-item-fav').checked) newItem.fav = true;
@@ -2658,7 +3253,7 @@
                     }
                 }
                 if (validCount < 2) {
-                    showToast('Kam az kam 2 size options (naam aur price) enter karein!');
+                    showToast('Enter at least 2 size options (name and price)!');
                     return;
                 }
                 newItem.prices = prices;
@@ -2666,7 +3261,7 @@
             } else {
                 var price = parseInt(document.getElementById('new-item-price').value);
                 if (isNaN(price) || price < 0) {
-                    showToast('Please sahi Price enter karein!');
+                    showToast('Please enter a valid Price!');
                     return;
                 }
                 newItem.price = price;
@@ -2680,6 +3275,7 @@
 
             document.getElementById('new-item-name').value = '';
             document.getElementById('new-item-desc').value = '';
+            document.getElementById('new-item-flavors').value = '';
             document.getElementById('new-item-price').value = '';
             document.getElementById('new-item-has-variants').checked = false;
             document.getElementById('new-item-variant-rows').innerHTML = '';
@@ -2693,7 +3289,7 @@
             try {
                 localStorage.setItem(MENU_KEY, JSON.stringify(menuItems));
             } catch (e) {
-                showToast('Storage full hai — kuch purani pics hata kar dobara try karein.');
+                showToast('Storage is full — remove some old pics and try again.');
                 return;
             }
             db.collection('menuItems').doc(String(newItem.id)).set(newItem).catch(function (err) {
@@ -2701,7 +3297,7 @@
             });
             renderAdminPriceEditor();
             renderMenuGrid();
-            showToast('Item/Deal Add Ho Gaya!');
+            showToast('Item/Deal added!');
         }
 
         function toggleItemStock(id) {
@@ -2712,7 +3308,7 @@
             db.collection('menuItems').doc(String(item.id)).set(item).catch(function (err) { console.warn(err); });
             renderAdminPriceEditor();
             renderMenuGrid();
-            showToast(item.outOfStock ? 'Item Out of Stock mark ho gaya.' : 'Item wapas In Stock mark ho gaya.');
+            showToast(item.outOfStock ? 'Item marked Out of Stock.' : 'Item marked In Stock again.');
         }
 
         function toggleItemBestSeller(id) {
@@ -2723,17 +3319,17 @@
             db.collection('menuItems').doc(String(item.id)).set(item).catch(function (err) { console.warn(err); });
             renderAdminPriceEditor();
             renderMenuGrid();
-            showToast(item.fav ? 'Item Best Seller mark ho gaya.' : 'Item se Best Seller hat gaya.');
+            showToast(item.fav ? 'Item marked as Best Seller.' : 'Best Seller mark removed.');
         }
 
         function deleteItem(id) {
-            showConfirm("Kya aap is item/deal ko delete karna chahte hain?", function() {
+            showConfirm("Do you want to delete this item/deal?", function() {
                 menuItems = menuItems.filter(function(item) { return String(item.id) !== String(id); });
                 localStorage.setItem(MENU_KEY, JSON.stringify(menuItems));
                 db.collection('menuItems').doc(String(id)).delete().catch(function (err) { console.warn(err); });
                 renderAdminPriceEditor();
                 renderMenuGrid();
-                showToast('Item delete ho gaya hai.');
+                showToast('Item deleted.');
             });
         }
 
@@ -2748,6 +3344,33 @@
                 if (descInp) {
                     var descVal = descInp.value.trim();
                     if (descVal) item.description = descVal; else delete item.description;
+                }
+
+                var flInp = document.getElementById('fl-input-' + item.id);
+                if (flInp) {
+                    var flv = flInp.value.trim();
+                    if (!flv) delete item.flavors; else item.flavors = flvSplit(flv);
+                }
+                var dmodeEl = document.getElementById('dmode-' + item.id);
+                if (item.cat === 'deals' && dmodeEl) {
+                    var dm = dmodeEl.value;
+                    if (dm === 'auto') {
+                        delete item.choices; delete item.pick; delete item.mix;
+                    } else if (dm === 'none') {
+                        item.choices = []; delete item.pick; delete item.mix;
+                    } else if (dm === 'pick') {
+                        var dcs = [];
+                        document.querySelectorAll('.dcat-' + item.id + ':checked').forEach(function (c) { dcs.push(c.value); });
+                        if (!dcs.length) {
+                            delete item.choices; delete item.pick; delete item.mix;
+                        } else {
+                            var dcnt = Math.max(1, Math.min(6, parseInt(document.getElementById('dcount-' + item.id).value, 10) || 1));
+                            item.mix = [{ label: 'Your choice', count: dcnt, cats: dcs }];
+                            var nb = (getDealDisplay(item).bullets || []).length;
+                            item.pick = []; for (var q = 0; q < nb; q++) item.pick.push('n');
+                            delete item.choices;
+                        }
+                    }
                 }
 
                 if (item.prices) {
@@ -2793,11 +3416,11 @@
                 });
                 saveBatch.commit().catch(function (err) {
                     console.warn('Prices sync failed (offline?)', err);
-                    showToast('Changes local save hui, internet na hone ki wajah se dusre devices par abhi nahi gayi.');
+                    showToast('Changes saved locally; they will not reach other devices until you are online.');
                 });
                 showToast('Prices & Changes Saved!');
             } else {
-                showToast('Prices local save hui (internet/Firebase available nahi — dusre devices par nahi gayi).');
+                showToast('Prices saved locally (internet/Firebase unavailable — not synced to other devices).');
             }
             renderMenuGrid();
             closeModal('admin-modal');
@@ -2825,7 +3448,7 @@
                 renderCategoryManageList();
                 renderAdminPriceEditor();
                 renderMenuGrid();
-                showToast('Menu aur categories default par reset ho gayi hain.');
+                showToast('Menu and categories reset to default.');
             });
         }
 
@@ -2881,7 +3504,7 @@
                 label.innerText = 'ON (' + sch.start + ' \u2013 ' + sch.end + ')';
                 label.style.color = 'var(--green)';
             } else {
-                label.innerText = 'OFF \u2014 ' + sch.start + ' \u2013 ' + sch.end + ' par wapas aayegi';
+                label.innerText = 'OFF \u2014 ' + sch.start + ' \u2013 ' + sch.end + ' — back on then';
                 label.style.color = 'var(--red)';
             }
         }
@@ -2891,7 +3514,7 @@
             var start = document.getElementById('deals-start-time').value;
             var end = document.getElementById('deals-end-time').value;
             if (enabled && (!start || !end)) {
-                showToast('Please Start aur End time dono set karein.');
+                showToast('Please set both Start and End time.');
                 return;
             }
             var schedule = { enabled: enabled, start: start, end: end };
@@ -2900,7 +3523,7 @@
             updateDealsStatusLabel();
             renderNavCategories();
             renderMenuGrid();
-            showToast('Deals timing save ho gayi hai.');
+            showToast('Deals timing saved.');
         }
 
         function toggleSpinFeature() {
@@ -3060,7 +3683,7 @@
             document.getElementById('admin-auth-box').style.display = 'block';
             isAdminUnlocked = false;
             closeModal('admin-modal');
-            showToast('Dashboard button chhup gaya. Dobara dikhane ke liye header ke naam par 5 baar tap karein.');
+            showToast('Dashboard button hidden. Tap the header name 5 times to show it again.');
         }
 
         // ---------- Firestore live sync (menu, settings, orders) ----------
@@ -3092,6 +3715,7 @@
                 menuSynced = true;
                 try { localStorage.setItem(MENU_KEY, JSON.stringify(menuItems)); } catch (e) {}
                 renderMenuGrid();
+                if (!snap.metadata.fromCache) ensureDailyBackup();
 
                 // One-time self-heal: any item with sizes that was saved BEFORE the
                 // priceOrder fix still has no priceOrder field, so it keeps falling
