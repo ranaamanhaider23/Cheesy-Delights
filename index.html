@@ -618,7 +618,6 @@
     </div>
 
     <div class="nav-container">
-        <button class="nav-btn active" data-i18n="allMenu" onclick="filterItems(this, 'all')">All Menu</button>
         <span id="category-nav-buttons"></span>
         <button class="nav-btn" id="spin-nav-btn" onclick="openModal('wheel-modal')">&#127873; Spin (1%-10% OFF)</button>
     </div>
@@ -1128,6 +1127,7 @@
             var cats = getCategories();
             var dealsOn = isDealsActiveNow();
             var container = document.getElementById('category-nav-buttons');
+            resolveCurrentCategory();
             var html = '';
             for (var i = 0; i < cats.length; i++) {
                 if (cats[i].id === 'deals' && !dealsOn) continue;
@@ -1137,9 +1137,23 @@
                 html += '<button class="nav-btn' + (currentCategory === cats[i].id ? ' active' : '') + '" onclick="filterItems(this, \'' + cats[i].id + '\')">' + escapeHtml(cats[i].label) + '</button>';
             }
             container.innerHTML = html;
-            if (!dealsOn && currentCategory === 'deals') {
-                currentCategory = 'all';
+        }
+
+        // There is no "All Menu" tab any more: always show one real category.
+        // If nothing valid is selected (first load, category deleted, deals switched
+        // off by the schedule...), fall back to the first visible category.
+        function resolveCurrentCategory() {
+            var cats = getCategories();
+            var dealsOn = isDealsActiveNow();
+            var first = null, valid = false;
+            for (var i = 0; i < cats.length; i++) {
+                var id = cats[i].id;
+                if (id === 'deals' && !dealsOn) continue;
+                if (!menuItems.some(function (it) { return it.cat === id; })) continue;
+                if (first === null) first = id;
+                if (id === currentCategory) valid = true;
             }
+            if (!valid && first !== null) currentCategory = first;
         }
 
         function renderCategoryDropdown() {
@@ -1955,6 +1969,7 @@
 
         function renderMenuGrid(selectedCat) {
             currentCategory = selectedCat || currentCategory;
+            resolveCurrentCategory();
             var grid = document.getElementById('menu-grid');
             // Remember what the customer already picked (size/flavour) so a live
             // Firestore refresh doesn't reset their selections.
@@ -1974,7 +1989,7 @@
             for (var i = 0; i < menuItems.length; i++) {
                 var item = menuItems[i];
                 if (item.cat === 'deals' && !dealsOn) continue;
-                if (currentCategory !== 'all' && item.cat !== currentCategory) continue;
+                if (!searchTerm && currentCategory !== 'all' && item.cat !== currentCategory) continue; // search looks in every category
                 if (searchTerm && item.name.toLowerCase().indexOf(searchTerm) === -1) continue;
 
                 shown++;
@@ -2065,10 +2080,15 @@
             for (var i = 0; i < menuItems.length; i++) {
                 if (menuItems[i].id === pendingHighlightItemId) { itemExists = true; break; }
             }
-            if (itemExists && currentCategory !== 'all') {
-                var allBtn = document.querySelector('.nav-container .nav-btn');
-                if (allBtn) filterItems(allBtn, 'all');
-                return; // filterItems() re-renders, which calls this function again
+            var targetItem = null;
+            for (var ti = 0; ti < menuItems.length; ti++) {
+                if (menuItems[ti].id === pendingHighlightItemId) { targetItem = menuItems[ti]; break; }
+            }
+            if (targetItem && currentCategory !== targetItem.cat) {
+                currentCategory = targetItem.cat;
+                renderNavCategories();
+                renderMenuGrid();
+                return; // renders again, which calls this function once more
             }
 
             var card = document.querySelector('[data-item-id="' + pendingHighlightItemId + '"]');
