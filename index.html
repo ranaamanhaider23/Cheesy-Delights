@@ -1100,8 +1100,8 @@
         var CATEGORIES_KEY = 'cheesy_categories';
         var defaultCategories = [
             { id: 'deals', label: '\ud83d\udd25 Deals' },
-            { id: 'reg-pizza', label: 'Regular Special Pizza' },
             { id: 'special-pizza', label: 'Special Pizza' },
+            { id: 'reg-pizza', label: 'Regular Special Pizza' },
             { id: 'burgers', label: 'Burgers' },
             { id: 'sandwiches', label: 'Sandwiches' },
             { id: 'paratha-rolls', label: 'Paratha Roll' },
@@ -1179,6 +1179,8 @@
                 html += '<div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid rgba(128,128,128,0.2);">' +
                     '<div style="display:flex; gap:6px; align-items:center; margin-bottom:4px;">' +
                     '<input type="text" class="input-admin" style="margin-bottom:0;" id="cat-name-' + cats[i].id + '" value="' + escapeHtml(cats[i].label) + '">' +
+                    '<button class="reset-btn" style="width:auto; padding:5px 8px;" title="Move up" onclick="moveCategory(\'' + cats[i].id + '\', -1)"' + (i === 0 ? ' disabled' : '') + '>&#9650;</button>' +
+                    '<button class="reset-btn" style="width:auto; padding:5px 8px;" title="Move down" onclick="moveCategory(\'' + cats[i].id + '\', 1)"' + (i === cats.length - 1 ? ' disabled' : '') + '>&#9660;</button>' +
                     '<button class="add-btn" style="padding:6px 10px;" onclick="renameCategory(\'' + cats[i].id + '\')">Save</button>' +
                     '<button class="del-btn" onclick="deleteCategory(\'' + cats[i].id + '\')"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-2 6h10l-1 12H8L7 9zm3 2v8h1v-8h-1zm3 0v8h1v-8h-1z"/></svg></button>' +
                     '</div>';
@@ -1189,6 +1191,32 @@
             }
             html = '<div class="flavor-hint">\ud83c\udfa8 Type flavours (comma separated) under a category and press Save. Customers will pick a flavour for items in that category. Leave it empty for categories like Pizza/Burger (the item name is the flavour); in deals, customers choose from those items.</div>' + html;
             container.innerHTML = html;
+        }
+
+        // Move a category up/down: the order here is the order customers see in the tabs.
+        function moveCategory(id, dir) {
+            var cats = getCategories();
+            var idx = -1;
+            for (var i = 0; i < cats.length; i++) if (cats[i].id === id) { idx = i; break; }
+            var to = idx + dir;
+            if (idx < 0 || to < 0 || to >= cats.length) return;
+            var tmp = cats[idx]; cats[idx] = cats[to]; cats[to] = tmp;
+            saveCategories(cats);
+            pushSettingsUpdate({ categories: cats, catOrderV2: true });
+            renderCategoryManageList();
+            renderNavCategories();
+            renderCategoryDropdown();
+            showToast('Category order updated.');
+        }
+
+        // One-time: put Deals first, then Special Pizza, then Regular Pizza (the rest keep
+        // their order). After this runs once, the owner's own up/down changes are kept.
+        function applyRecommendedCategoryOrder(cats) {
+            var pri = ['deals', 'special-pizza', 'reg-pizza'];
+            var head = [];
+            pri.forEach(function (id) { cats.forEach(function (c) { if (c.id === id) head.push(c); }); });
+            var rest = cats.filter(function (c) { return pri.indexOf(c.id) === -1; });
+            return head.concat(rest);
         }
 
         function renameCategory(id) {
@@ -3817,7 +3845,7 @@
                 callNumber: getCallDisplay(),
                 socialLinks: getSocialLinks(),
                 spinEnabled: isSpinEnabled,
-                categories: getCategories(),
+                categories: getCategories(), catOrderV2: true,
                 dealsSchedule: getDealsSchedule(),
                 orderCounter: parseInt(localStorage.getItem(ORDER_COUNTER_KEY) || '0')
             }, { merge: true }).catch(function (err) { console.warn('Settings seed failed', err); });
@@ -3839,7 +3867,14 @@
                     isSpinEnabled = data.spinEnabled;
                     localStorage.setItem(SPIN_ENABLED_KEY, isSpinEnabled ? 'true' : 'false');
                 }
-                if (data.categories && data.categories.length) saveCategories(data.categories);
+                if (data.categories && data.categories.length) {
+                    var syncedCats = data.categories;
+                    if (!data.catOrderV2) {
+                        syncedCats = applyRecommendedCategoryOrder(syncedCats);
+                        pushSettingsUpdate({ categories: syncedCats, catOrderV2: true });
+                    }
+                    saveCategories(syncedCats);
+                }
                 if (data.dealsSchedule) localStorage.setItem(DEALS_SCHEDULE_KEY, JSON.stringify(data.dealsSchedule));
 
                 renderSocialLinks();
