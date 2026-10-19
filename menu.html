@@ -136,6 +136,7 @@
         font-size: 0.7rem; color: var(--text-muted); line-height: 1.4;
         white-space: pre-line; word-wrap: break-word;
     }
+    .flavor-line { font-size: 0.68rem; color: var(--accent-yellow); line-height: 1.4; margin-top: 3px; }
     .item-variants { font-size: 0.72rem; color: var(--text-muted); line-height: 1.5; margin-top: 2px; }
     .item-variants b { color: var(--accent-yellow); font-weight: 600; }
     .item-price {
@@ -238,7 +239,7 @@
             📍 Satiana Road, Saleemi Chowk, Near Punjab Lab
         </div>
 
-        <div class="edit-hint">Deal/price change karna ho? Main site (index.html) kholein → ⚙️ Settings → PIN se unlock karein. Wahan se kiya gaya change yahan khud-ba-khud aa jata hai.</div>
+        <div class="edit-hint">Want to change a deal or price? Open the main site (index.html) → ⚙️ Settings → unlock with your PIN. Changes made there appear here automatically.</div>
     </div>
 </div>
 
@@ -320,10 +321,228 @@
         return { title: item.name, bullets: null };
     }
 
+    // ---------- Flavours (same logic as index.html) ----------
+        var DEFAULT_CAT_FLAVORS = { drinks: ['Pepsi', '7Up', 'Mirinda', 'Mountain Dew', 'Sting'] }; // starting list only; edit it in Settings > Manage Categories
+        var flvGroupMap = {};
+        var FLV_STOP = { small:1, medium:1, large:1, regular:1, special:1, extra:1, and:1, the:1, of:1, with:1, pcs:1, pc:1, piece:1, pieces:1, ml:1, litre:1, liter:1, l:1 };
+
+        function flvClean(arr) {
+            var out = [];
+            (arr || []).forEach(function (x) { x = String(x).trim(); if (x && out.indexOf(x) === -1) out.push(x); });
+            return out;
+        }
+        function flvSplit(str) {
+            var t = String(str || '').trim();
+            if (t === '-') return [];
+            return flvClean(t.split(/[,\u060C\n]/));
+        }
+        function flvCategoryList(cat) {
+            if (!cat) return [];
+            if (Array.isArray(cat.flavors)) return flvClean(cat.flavors);
+            return (DEFAULT_CAT_FLAVORS[cat.id] || []).slice();
+        }
+        function flvFindCat(cats, id) {
+            for (var i = 0; i < cats.length; i++) if (cats[i].id === id) return cats[i];
+            return null;
+        }
+        function flvBase(n) {
+            return String(n).replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+        function flvTokens(s) {
+            return String(s).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(function (w) {
+                return w && !/^\d/.test(w) && !FLV_STOP[w];
+            }).map(function (w) { return w.replace(/(es|s)$/, ''); });
+        }
+        function itemFlavors(item, cats) {
+            if (!item || item.cat === 'deals') return [];
+            if (Array.isArray(item.flavors)) return flvClean(item.flavors);
+            return flvCategoryList(flvFindCat(cats, item.cat));
+        }
+        function flvCategoryOptions(cat, items, cats) {
+            var list = flvCategoryList(cat);
+            if (list.length) return list;
+            var seen = {}, names = [];
+            items.forEach(function (it) {
+                if (it.cat !== cat.id || it.outOfStock) return;
+                var b = flvBase(it.name);
+                if (b && !seen[b.toLowerCase()]) { seen[b.toLowerCase()] = 1; names.push(b); }
+            });
+            return names.length >= 2 ? names : [];
+        }
+        function flvParseBullet(b) {
+            var s = String(b).trim();
+            var m = s.match(/^(\d{1,2})\s*[x\u00D7]\s*(.+)$/i) || s.match(/^(\d{1,2})\s+(?![.\d])(.+)$/);
+            if (m) {
+                var q = parseInt(m[1], 10);
+                if (q >= 1 && q <= 6) return { qty: q, text: m[2].trim() };
+            }
+            return { qty: 1, text: s };
+        }
+        function flvStripEmoji(t) {
+            return String(t).replace(/[^\x00-\x7F]/g, '').replace(/\s+/g, ' ').trim();
+        }
+        // pick[i]: '' = auto, 'y' = customer must choose (from that item's category),
+        // 'n' = fixed item, no choice.
+        // Every pickable name in a category: its flavours if set, else its in-stock item names.
+        function flvAllOptions(c, items) {
+            var list = flvCategoryList(c);
+            if (list.length) return list;
+            var seen = {}, names = [];
+            items.forEach(function (it) {
+                if (it.cat !== c.id || it.outOfStock) return;
+                var b = flvBase(it.name);
+                if (b && !seen[b.toLowerCase()]) { seen[b.toLowerCase()] = 1; names.push(b); }
+            });
+            return names;
+        }
+        function autoDealChoices(bullets, items, cats, pick) {
+            var out = [];
+            (bullets || []).forEach(function (b, bi) {
+                var mode = (pick && pick[bi]) || '';
+                if (mode === 'n') return;
+                var force = mode === 'y';
+                var pb = flvParseBullet(b);
+                var base = flvBase(pb.text);
+                if (!base) return;
+                if (mode === 'any') {
+                    var ag = [], au = [];
+                    cats.forEach(function (c) {
+                        if (c.id === 'deals') return;
+                        var o = flvAllOptions(c, items);
+                        if (!o.length) return;
+                        ag.push({ label: flvStripEmoji(c.label) || c.label, list: o });
+                        o.forEach(function (x) { if (au.indexOf(x) === -1) au.push(x); });
+                    });
+                    if (au.length) { var ach = { label: base, count: pb.qty, list: au }; if (ag.length > 1) ach.groups = ag; out.push(ach); }
+                    return;
+                }
+                if (mode.indexOf('c:') === 0) {
+                    var cc = flvFindCat(cats, mode.slice(2));
+                    var co = cc ? flvAllOptions(cc, items) : [];
+                    if (co.length) out.push({ label: base, count: pb.qty, list: co });
+                    return;
+                }
+                var low = base.toLowerCase();
+                var exact = null;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].cat !== 'deals' && flvBase(items[i].name).toLowerCase() === low) { exact = items[i]; break; }
+                }
+                if (exact) {
+                    var fl = itemFlavors(exact, cats);
+                    if (fl.length) { out.push({ label: flvBase(exact.name), count: pb.qty, list: fl }); return; }
+                    if (!force) return;
+                    var ec = flvFindCat(cats, exact.cat);
+                    var eo = ec ? flvCategoryOptions(ec, items, cats) : [];
+                    if (eo.length) out.push({ label: (ec && flvStripEmoji(ec.label)) || base, count: pb.qty, list: eo });
+                    return;
+                }
+                var toks = flvTokens(base);
+                if (!toks.length) return;
+                var best = 0, winners = [];
+                cats.forEach(function (c) {
+                    if (c.id === 'deals') return;
+                    var ct = flvTokens(flvStripEmoji(c.label));
+                    if (!ct.length) return;
+                    var hit = 0;
+                    ct.forEach(function (w) { if (toks.indexOf(w) !== -1) hit++; });
+                    if (!hit) return;
+                    var score = hit / ct.length;
+                    if (score > best + 1e-9) { best = score; winners = [c]; }
+                    else if (Math.abs(score - best) < 1e-9) winners.push(c);
+                });
+                var groups = [], union = [];
+                winners.forEach(function (c) {
+                    var o = flvCategoryOptions(c, items, cats);
+                    if (!o.length) return;
+                    groups.push({ label: flvStripEmoji(c.label) || c.label, list: o });
+                    o.forEach(function (x) { if (union.indexOf(x) === -1) union.push(x); });
+                });
+                if (!groups.length) return;
+                var ch = { label: base, count: pb.qty, list: union };
+                // Matching categories (e.g. Regular + Special Pizza) are merged into ONE list.
+                out.push(ch);
+            });
+            return out;
+        }
+        // "Mix" slots: the customer picks the item TYPE (pizza / burger / sandwich...)
+        // first, then the exact item/flavour of that type.
+        function mixChoices(item, items, cats) {
+            var out = [];
+            (item.mix || []).forEach(function (m) {
+                var groups = [], union = [];
+                (m.cats || []).forEach(function (id) {
+                    var c = flvFindCat(cats, id);
+                    if (!c) return;
+                    var o = flvCategoryOptions(c, items, cats);
+                    if (!o.length) return;
+                    groups.push({ label: flvStripEmoji(c.label) || c.label, list: o });
+                    o.forEach(function (x) { if (union.indexOf(x) === -1) union.push(x); });
+                });
+                if (!groups.length) return;
+                var ch = { label: m.label || 'Item', count: Math.max(1, Math.min(6, parseInt(m.count, 10) || 1)), list: union };
+                if (groups.length > 1) ch.groups = groups;
+                out.push(ch);
+            });
+            return out;
+        }
+        function getDealChoices(item, items, cats) {
+            return getBaseDealChoices(item, items, cats).concat(mixChoices(item, items, cats));
+        }
+        function getBaseDealChoices(item, items, cats) {
+            if (Array.isArray(item.choices)) {
+                return item.choices.filter(function (c) { return c && c.list && c.list.length; }).map(function (c) {
+                    return { label: c.label || 'Flavour', count: Math.max(1, Math.min(6, parseInt(c.count, 10) || 1)), list: flvClean(c.list) };
+                });
+            }
+            var dd = getDealDisplay(item);
+            return autoDealChoices(dd.bullets, items, cats, item.pick);
+        }
+        function choicesToText(choices) {
+            return (choices || []).map(function (c) {
+                return c.label + (c.count > 1 ? ' x' + c.count : '') + ' = ' + (c.list || []).join(', ');
+            }).join('\n');
+        }
+        function parseChoicesText(txt) {
+            var t = String(txt || '').trim();
+            if (t === '-') return [];
+            var out = [];
+            t.split('\n').forEach(function (line) {
+                var m = line.match(/^(.*?)(?:\s*[x\u00D7]\s*(\d+))?\s*=\s*(.+)$/i);
+                if (!m) return;
+                var list = flvSplit(m[3]);
+                if (!list.length) return;
+                out.push({ label: m[1].trim() || 'Flavour', count: Math.max(1, Math.min(6, parseInt(m[2], 10) || 1)), list: list });
+            });
+            return out;
+        }
+
+        function flvUpdateBox(box) {
+            if (!box) return;
+            var prog = box.querySelector('.flv-prog');
+            if (!prog) return;
+            var sels = box.querySelectorAll('select.flavor-select'), done = 0;
+            Array.prototype.forEach.call(sels, function (x) { if (x.value) done++; });
+            prog.textContent = done + '/' + sels.length;
+            prog.classList.toggle('flv-complete', done === sels.length && sels.length > 0);
+        }
+    function flavorLineHtml(item) {
+        if (item.cat === 'deals') {
+            var ch = getDealChoices(item, allMenuItems, categories);
+            if (!ch.length) return '';
+            return '<div class="flavor-line">🎨 Choose your flavours when ordering: ' + ch.map(function (c) {
+                var inner = c.groups ? c.groups.map(function (g) { return escapeHtml(g.label) + ': ' + escapeHtml(g.list.join(', ')); }).join(' | ') : escapeHtml(c.list.join(', '));
+                return escapeHtml(c.label) + (c.count > 1 ? ' ×' + c.count : '') + ' (' + inner + ')';
+            }).join(' • ') + '</div>';
+        }
+        var fl = itemFlavors(item, categories);
+        if (!fl.length) return '';
+        return '<div class="flavor-line">🎨 Flavours: ' + escapeHtml(fl.join(', ')) + '</div>';
+    }
+
     function renderDeals(deals) {
         var list = document.getElementById('deals-list');
         if (!deals || deals.length === 0) {
-            list.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:0.85rem;">Abhi koi deal available nahi hai.</div>';
+            list.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:0.85rem;">No deals available right now.</div>';
             return;
         }
         list.innerHTML = deals.map(function (d) {
@@ -332,7 +551,7 @@
                 ? '<div class="deal-bullets">' + disp.bullets.map(escapeHtml).join(' + ') + '</div>'
                 : (d.description ? '<div class="deal-bullets">' + escapeHtml(d.description) + '</div>' : '');
             return '<div class="deal-card" onclick="goOrderItem(' + d.id + ')">' +
-                '<div class="deal-info"><div class="deal-name">' + escapeHtml(disp.title) + '</div>' + bulletsHtml + '</div>' +
+                '<div class="deal-info"><div class="deal-name">' + escapeHtml(disp.title) + '</div>' + bulletsHtml + flavorLineHtml(d) + '</div>' +
                 '<div class="deal-price">Rs. ' + Number(d.price || 0).toLocaleString() + '</div>' +
             '</div>';
         }).join('');
@@ -345,7 +564,7 @@
             : '<div class="no-photo-fallback">🧀</div>';
         var favRibbon = item.fav ? '<span class="fav-ribbon">★ Best Seller</span>' : '';
         var oosBadge = isOOS ? '<span class="oos-badge">Out of Stock</span>' : '';
-        var descHtml = item.description ? '<div class="item-desc">' + escapeHtml(item.description) + '</div>' : '';
+        var descHtml = (item.description ? '<div class="item-desc">' + escapeHtml(item.description) + '</div>' : '') + flavorLineHtml(item);
         var priceHtml;
         if (item.prices) {
             // Use the saved display order (priceOrder) rather than the object's own
@@ -385,7 +604,7 @@
         var items = allMenuItems.filter(function (it) { return it.cat !== 'deals'; });
 
         if (items.length === 0) {
-            container.innerHTML = '<div class="no-results">Menu abhi load ho raha hai...</div>';
+            container.innerHTML = '<div class="no-results">Loading menu...</div>';
             return;
         }
 
@@ -411,7 +630,7 @@
             '</div>';
         }
 
-        container.innerHTML = html || '<div class="no-results">Abhi menu mein koi item nahi hai.</div>';
+        container.innerHTML = html || '<div class="no-results">There are no items on the menu yet.</div>';
     }
 
     // Instant first paint from the last-known copy, then Firestore takes over live.
