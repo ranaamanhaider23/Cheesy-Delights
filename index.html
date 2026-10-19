@@ -1089,6 +1089,13 @@
         var savedMenu = localStorage.getItem(MENU_KEY);
         var menuItems = savedMenu ? JSON.parse(savedMenu) : defaultMenuItems.slice();
         var menuSynced = false;
+        // First visit on a device (nothing saved yet): don't flash the built-in sample
+        // menu for a few seconds before the real menu arrives from Firestore — show
+        // a short "Loading" message instead, and fall back to the sample after 6 seconds.
+        var awaitingFirstSync = !savedMenu;
+        setTimeout(function () {
+            if (awaitingFirstSync) { awaitingFirstSync = false; try { renderMenuGrid(); } catch (e) {} }
+        }, 6000);
 
         // ---------- Categories (rename/delete/add) ----------
         var CATEGORIES_KEY = 'cheesy_categories';
@@ -1927,6 +1934,10 @@
             // Firestore refresh doesn't reset their selections.
             var savedSel = {};
             Array.prototype.forEach.call(grid.querySelectorAll('select[id]'), function (sel) { savedSel[sel.id] = sel.value; });
+            if (awaitingFirstSync && !menuSynced) {
+                grid.innerHTML = '<div class="no-results">' + flvL('Loading menu\u2026', 'Menu load ho raha hai\u2026') + '</div>';
+                return;
+            }
             grid.innerHTML = '';
             flvGroupMap = {};
 
@@ -3701,8 +3712,10 @@
             db.collection('menuItems').onSnapshot(function (snap) {
                 if (snap.empty) {
                     if (!menuSynced) seedDefaultMenuToFirestore();
+                    if (awaitingFirstSync) { awaitingFirstSync = false; renderMenuGrid(); }
                     return;
                 }
+                awaitingFirstSync = false;
                 var items = [];
                 snap.forEach(function (doc) { items.push(doc.data()); });
                 // Tie-break by id when two items share the same orderIndex (or neither
@@ -3745,6 +3758,7 @@
                 // after Save, and after add/delete/reset actions.
             }, function (err) {
                 console.warn('Menu sync error (offline?)', err);
+                if (awaitingFirstSync) { awaitingFirstSync = false; renderMenuGrid(); }
             });
         }
 
