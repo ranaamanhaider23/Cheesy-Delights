@@ -549,6 +549,7 @@
             prog.classList.toggle('flv-complete', done === sels.length && sels.length > 0);
         }
     function flavorLineHtml(item) {
+        return ''; // flavour details are chosen on the ordering page, not shown here
         if (item.cat === 'deals') {
             var ch = getDealChoices(item, allMenuItems, categories);
             if (!ch.length) return '';
@@ -574,7 +575,7 @@
                 ? '<div class="deal-bullets">' + disp.bullets.map(escapeHtml).join(' + ') + '</div>'
                 : (d.description ? '<div class="deal-bullets">' + escapeHtml(d.description) + '</div>' : '');
             return '<div class="deal-card" onclick="goOrderItem(' + d.id + ')">' +
-                '<div class="deal-info"><div class="deal-name">' + escapeHtml(disp.title) + '</div>' + bulletsHtml + flavorLineHtml(d) + '</div>' +
+                '<div class="deal-info"><div class="deal-name">' + escapeHtml(disp.title) + '</div>' + bulletsHtml + '</div>' +
                 '<div class="deal-price">Rs. ' + Number(d.price || 0).toLocaleString() + '</div>' +
             '</div>';
         }).join('');
