@@ -3,7 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cheesy Delights | Menu &amp; Deals</title>
+<title>Cheesy Delights Menu &amp; Deals - Faisalabad</title>
+    <meta name="description" content="Live menu and hot deals of Cheesy Delights - pizza, burgers, shawarma, wings. Tap any item to order on WhatsApp.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://cheesy-delights.vercel.app/menu.html">
+    <meta property="og:type" content="restaurant.menu">
+    <meta property="og:site_name" content="Cheesy Delights">
+    <meta property="og:title" content="Cheesy Delights Menu &amp; Deals | Faisalabad">
+    <meta property="og:description" content="Live menu and hot deals of Cheesy Delights - pizza, burgers, shawarma, wings. Tap any item to order on WhatsApp.">
+    <meta property="og:url" content="https://cheesy-delights.vercel.app/menu.html">
+    <meta property="og:image" content="https://cheesy-delights.vercel.app/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cheesy Delights Menu &amp; Deals | Faisalabad">
+    <meta name="twitter:description" content="Live menu and hot deals of Cheesy Delights - pizza, burgers, shawarma, wings. Tap any item to order on WhatsApp.">
+    <meta name="twitter:image" content="https://cheesy-delights.vercel.app/og-image.png">
+    <meta name="theme-color" content="#ffb703">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -162,6 +178,8 @@
         align-items: flex-start; margin-bottom: 13px; gap: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         cursor: pointer; transition: transform 0.15s ease;
     }
+    .deal-card { flex-wrap: wrap; }
+    .deal-photo { width: 100%; height: 150px; object-fit: cover; border-radius: 10px; display: block; }
     .deal-card:active { transform: scale(0.98); }
     .deal-info { flex: 1; }
     .deal-name { font-family: 'Fredoka', sans-serif; font-weight: 600; color: var(--accent-yellow); font-size: 0.95rem; margin-bottom: 3px; }
@@ -563,7 +581,28 @@
         return '<div class="flavor-line">🎨 Flavours: ' + escapeHtml(fl.join(', ')) + '</div>';
     }
 
+
+    // ---------- Per-deal timing (each deal can have its own start/end time) ----------
+    function dealTimeActive(item) {
+        if (!item || !item.timeStart || !item.timeEnd) return true;
+        var n = new Date(), now = n.getHours() * 60 + n.getMinutes();
+        var a = item.timeStart.split(':'), b = item.timeEnd.split(':');
+        var s = parseInt(a[0], 10) * 60 + parseInt(a[1], 10), e = parseInt(b[0], 10) * 60 + parseInt(b[1], 10);
+        if (isNaN(s) || isNaN(e)) return true;
+        if (s <= e) return now >= s && now <= e;
+        return now >= s || now <= e; // overnight, e.g. 22:00 -> 02:00
+    }
+    function fmtClock(t) {
+        var p = String(t).split(':'), h = parseInt(p[0], 10), m = p[1] || '00', ap = h >= 12 ? 'PM' : 'AM';
+        h = h % 12; if (h === 0) h = 12;
+        return h + ':' + m + ' ' + ap;
+    }
+    function dealTimeLabel(item) {
+        return (item && item.timeStart && item.timeEnd) ? fmtClock(item.timeStart) + ' \u2013 ' + fmtClock(item.timeEnd) : '';
+    }
+
     function renderDeals(deals) {
+        deals = (deals || []).filter(dealTimeActive);
         var list = document.getElementById('deals-list');
         if (!deals || deals.length === 0) {
             list.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:0.85rem;">No deals available right now.</div>';
@@ -574,12 +613,21 @@
             var bulletsHtml = disp.bullets
                 ? '<div class="deal-bullets">' + disp.bullets.map(escapeHtml).join(' + ') + '</div>'
                 : (d.description ? '<div class="deal-bullets">' + escapeHtml(d.description) + '</div>' : '');
-            return '<div class="deal-card" onclick="goOrderItem(' + d.id + ')">' +
-                '<div class="deal-info"><div class="deal-name">' + escapeHtml(disp.title) + '</div>' + bulletsHtml + '</div>' +
+            var dealPhoto = d.image ? '<img class="deal-photo" src="' + d.image + '" alt="' + escapeHtml(disp.title) + '">' : '';
+            return '<div class="deal-card" onclick="goOrderItem(' + d.id + ')">' + dealPhoto +
+                '<div class="deal-info"><div class="deal-name">' + escapeHtml(disp.title) + '</div>' + bulletsHtml + (d.timeStart && d.timeEnd ? '<div style="font-size:0.72rem;font-weight:700;color:#ffb703;margin-top:4px;">\u23f0 ' + dealTimeLabel(d) + '</div>' : '') + '</div>' +
                 '<div class="deal-price">Rs. ' + Number(d.price || 0).toLocaleString() + '</div>' +
             '</div>';
         }).join('');
     }
+
+    // Re-check deal timings every 30s so deals appear/disappear on their own.
+    var lastDealSig = '';
+    setInterval(function () {
+        var sig = allMenuItems.filter(function (it) { return it.cat === 'deals' && dealTimeActive(it); }).map(function (it) { return it.id; }).join(',');
+        if (lastDealSig && sig !== lastDealSig) renderDeals(allMenuItems.filter(function (it) { return it.cat === 'deals'; }));
+        lastDealSig = sig;
+    }, 30000);
 
     function renderItemCard(item) {
         var isOOS = !!item.outOfStock;
@@ -618,7 +666,9 @@
     }
 
     function goOrderItem(id) {
-        window.location.href = 'index.html?item=' + id;
+        var sp = '';
+        try { var q = new URLSearchParams(location.search); var sv = q.get('src') || q.get('utm_source') || localStorage.getItem('cheesy_src') || 'menu-qr'; sp = '&src=' + encodeURIComponent(sv); } catch (e) {}
+        window.location.href = 'index.html?item=' + id + sp;
     }
 
     // One continuous page: every category gets its own heading + grid, in
@@ -673,7 +723,8 @@
             snap.forEach(function (doc) { all.push(doc.data()); });
             all.sort(function (a, b) { return (a.orderIndex || 0) - (b.orderIndex || 0) || (a.id - b.id); });
             allMenuItems = all;
-            try { localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(all)); } catch (e) {}
+            // Pictures are big (base64) — keep them out of the small local cache; they come live from Firestore.
+            try { localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(all.map(function (it) { var c = {}; for (var k in it) if (k !== 'image') c[k] = it[k]; return c; }))); } catch (e) {}
             renderFullMenu();
             renderDeals(all.filter(function (it) { return it.cat === 'deals'; }));
 
