@@ -4327,6 +4327,20 @@
 
         // Re-check the Deals schedule every 30 seconds so Deals turn on/off by
         // themselves at the set time, even if the page is just left open.
+        // The "Selected" bar follows the customer: tapping any card (or its flavour/size
+        // controls) moves the bar to that card. Changing category clears it until a new tap.
+        document.getElementById('menu-grid').addEventListener('click', function (e) {
+            var card = e.target.closest ? e.target.closest('.card') : null;
+            if (!card || card.classList.contains('card-oos')) return;
+            var raw = card.getAttribute('data-item-id');
+            var found = null;
+            for (var i = 0; i < menuItems.length; i++) { if (String(menuItems[i].id) === raw) { found = menuItems[i]; break; } }
+            if (!found) return;
+            focusItemId = found.id;
+            pendingHighlightItemId = null;
+            Array.prototype.forEach.call(document.querySelectorAll('#menu-grid .card-selected'), function (c) { c.classList.remove('card-selected'); });
+            card.classList.add('card-selected');
+        });
         appReady = true;
         if (pendingHighlightItemId !== null) { try { tryHighlightPendingItem(); } catch (e) { console.warn(e); } }
         var lastDealsState = isDealsActiveNow() + '|' + dealsVisibleSig();
