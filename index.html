@@ -1161,6 +1161,28 @@
         // menu for a few seconds before the real menu arrives from Firestore — show
         // a short "Loading" message instead, and fall back to the sample after 6 seconds.
         var awaitingFirstSync = !savedMenu;
+
+        // ---------- "Selected item" mode (coming from menu.html) ----------
+        // When a customer taps an item on the menu page, only THAT item is shown here
+        // straight away (no waiting for the full menu), with a button for the whole menu.
+        var focusItemId = (function () {
+            try {
+                var raw = new URLSearchParams(window.location.search).get('item');
+                if (!raw) return null;
+                var n = parseInt(raw, 10);
+                var id = isNaN(n) ? raw : n;
+                if (!savedMenu) { // first visit: use the item menu.html handed over
+                    var pk = JSON.parse(sessionStorage.getItem('cheesy_pick') || 'null');
+                    if (pk && String(pk.id) === String(id)) { menuItems = [pk]; awaitingFirstSync = false; }
+                }
+                return id;
+            } catch (e) { return null; }
+        })();
+        function showFullMenu() {
+            focusItemId = null; pendingHighlightItemId = null;
+            renderNavCategories(); renderMenuGrid();
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
+        }
         setTimeout(function () {
             if (awaitingFirstSync) { awaitingFirstSync = false; try { renderMenuGrid(); } catch (e) {} }
         }, 6000);
@@ -2248,6 +2270,20 @@
             }
             grid.innerHTML = '';
             flvGroupMap = {};
+            if (focusItemId !== null) {
+                var fOk = menuItems.some(function (it) { return it.id === focusItemId && !(it.cat === 'deals' && (!isDealsActiveNow() || !dealTimeActive(it))); });
+                var fSearch = (document.getElementById('search-box').value || '').trim();
+                if (fSearch || (!fOk && (menuSynced || !awaitingFirstSync && menuItems.length > 1))) {
+                    focusItemId = null; // item gone or customer searching: back to normal menu
+                } else if (fOk) {
+                    var bn = document.createElement('div');
+                    bn.className = 'no-results';
+                    bn.style.cssText = 'padding:6px 4px 2px;';
+                    bn.innerHTML = '<div style="font-size:.85rem;margin-bottom:8px;">' + flvL('Your selected item', 'Aap ki select ki hui item') + '</div>' +
+                        '<button class="hero-cta hero-cta-outline" style="font-size:.8rem;padding:8px 14px;" onclick="showFullMenu()">' + flvL('View full menu', 'Poora menu dekhein') + '</button>';
+                    grid.appendChild(bn);
+                }
+            }
 
             var searchTerm = (document.getElementById('search-box').value || '').trim().toLowerCase();
             var shown = 0;
@@ -2256,7 +2292,8 @@
             for (var i = 0; i < menuItems.length; i++) {
                 var item = menuItems[i];
                 if (item.cat === 'deals' && (!dealsOn || !dealTimeActive(item))) continue;
-                if (!searchTerm && currentCategory !== 'all' && item.cat !== currentCategory) continue; // search looks in every category
+                if (focusItemId !== null) { if (item.id !== focusItemId) continue; }
+                else if (!searchTerm && currentCategory !== 'all' && item.cat !== currentCategory) continue; // search looks in every category
                 if (searchTerm && item.name.toLowerCase().indexOf(searchTerm) === -1) continue;
 
                 shown++;
@@ -2415,6 +2452,7 @@
             }
             if (btnElement) btnElement.classList.add('active');
             document.getElementById('search-box').value = '';
+            focusItemId = null;
             renderMenuGrid(category);
         }
 
