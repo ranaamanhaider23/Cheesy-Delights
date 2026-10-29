@@ -668,6 +668,14 @@
     function goOrderItem(id) {
         var sp = '';
         try { var q = new URLSearchParams(location.search); var sv = q.get('src') || q.get('utm_source') || localStorage.getItem('cheesy_src') || 'menu-qr'; sp = '&src=' + encodeURIComponent(sv); } catch (e) {}
+        try { // hand the tapped item over so index.html can show it instantly
+            var picked = allMenuItems.filter(function (it) { return it.id === id; })[0];
+            if (picked) {
+                var copy = JSON.parse(JSON.stringify(picked));
+                if (copy.image && copy.image.length > 250000) delete copy.image;
+                sessionStorage.setItem('cheesy_pick', JSON.stringify(copy));
+            }
+        } catch (e) {}
         window.location.href = 'index.html?item=' + id + sp;
     }
 
