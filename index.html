@@ -96,6 +96,8 @@
 
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
 
+        .card-selected { outline: 3px solid var(--accent-yellow); outline-offset: -3px; box-shadow: 0 0 18px rgba(255,183,3,.45); position: relative; }
+        .card-selected::before { content: '\2713  Selected'; position: absolute; top: -12px; left: 14px; z-index: 3; background: var(--accent-yellow); color: #1a1a1a; font-weight: 800; font-size: .7rem; padding: 3px 9px; border-radius: 12px; }
         .no-results { text-align: center; color: var(--text-muted); padding: 30px 10px; grid-column: 1 / -1; }
 
         .card-oos { opacity: 0.6; position: relative; }
@@ -2270,20 +2272,7 @@
             }
             grid.innerHTML = '';
             flvGroupMap = {};
-            if (focusItemId !== null) {
-                var fOk = menuItems.some(function (it) { return it.id === focusItemId && !(it.cat === 'deals' && (!isDealsActiveNow() || !dealTimeActive(it))); });
-                var fSearch = (document.getElementById('search-box').value || '').trim();
-                if (fSearch || (!fOk && (menuSynced || !awaitingFirstSync && menuItems.length > 1))) {
-                    focusItemId = null; // item gone or customer searching: back to normal menu
-                } else if (fOk) {
-                    var bn = document.createElement('div');
-                    bn.className = 'no-results';
-                    bn.style.cssText = 'padding:6px 4px 2px;';
-                    bn.innerHTML = '<div style="font-size:.85rem;margin-bottom:8px;">' + flvL('Your selected item', 'Aap ki select ki hui item') + '</div>' +
-                        '<button class="hero-cta hero-cta-outline" style="font-size:.8rem;padding:8px 14px;" onclick="showFullMenu()">' + flvL('View full menu', 'Poora menu dekhein') + '</button>';
-                    grid.appendChild(bn);
-                }
-            }
+            if (focusItemId !== null && (document.getElementById('search-box').value || '').trim()) focusItemId = null; // searching: drop the selection
 
             var searchTerm = (document.getElementById('search-box').value || '').trim().toLowerCase();
             var shown = 0;
@@ -2292,14 +2281,13 @@
             for (var i = 0; i < menuItems.length; i++) {
                 var item = menuItems[i];
                 if (item.cat === 'deals' && (!dealsOn || !dealTimeActive(item))) continue;
-                if (focusItemId !== null) { if (item.id !== focusItemId) continue; }
-                else if (!searchTerm && currentCategory !== 'all' && item.cat !== currentCategory) continue; // search looks in every category
+                if (!searchTerm && currentCategory !== 'all' && item.cat !== currentCategory) continue; // search looks in every category
                 if (searchTerm && item.name.toLowerCase().indexOf(searchTerm) === -1) continue;
 
                 shown++;
                 var card = document.createElement('div');
                 var isOOS = !!item.outOfStock;
-                card.className = 'card' + (isOOS ? ' card-oos' : '');
+                card.className = 'card' + (isOOS ? ' card-oos' : '') + (focusItemId !== null && item.id === focusItemId ? ' card-selected' : '');
                 card.setAttribute('data-item-id', item.id);
 
                 var starHtml = item.fav ? '<span class="fav-star">&#9733;</span>' : '';
@@ -2366,6 +2354,16 @@
                 grid.innerHTML = '<div class="no-results">No items found. Try a different search or category.</div>';
             }
 
+            // The item picked on menu.html stays marked "Selected" with its flavour box open.
+            var selCard = focusItemId !== null ? grid.querySelector('.card-selected') : null;
+            if (selCard) {
+                var selBox = selCard.querySelector('.flavor-box');
+                if (selBox && !selBox.classList.contains('open') && !selBox.getAttribute('data-auto-opened')) {
+                    selBox.classList.add('open'); selBox.setAttribute('data-auto-opened', '1');
+                    var selTg = selBox.querySelector('.flv-toggle');
+                    if (selTg && selTg.getAttribute('data-less')) selTg.textContent = selTg.getAttribute('data-less');
+                }
+            }
             tryHighlightPendingItem();
         }
 
@@ -2387,8 +2385,9 @@
             setTimeout(function () { try { tryHighlightPendingItem(); } catch (e) {} }, 500);
         }
 
+        var appReady = false; // set at the very end of the main script (see below)
         function tryHighlightPendingItem() {
-            if (pendingHighlightItemId === null) return;
+            if (pendingHighlightItemId === null || !appReady) return;
 
             // Make sure the item isn't hidden by a category filter or search box.
             var itemExists = false;
@@ -4328,6 +4327,8 @@
 
         // Re-check the Deals schedule every 30 seconds so Deals turn on/off by
         // themselves at the set time, even if the page is just left open.
+        appReady = true;
+        if (pendingHighlightItemId !== null) { try { tryHighlightPendingItem(); } catch (e) { console.warn(e); } }
         var lastDealsState = isDealsActiveNow() + '|' + dealsVisibleSig();
         setInterval(function() {
             var nowActive = isDealsActiveNow() + '|' + dealsVisibleSig();
