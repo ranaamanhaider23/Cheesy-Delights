@@ -2344,7 +2344,11 @@
             var n = parseInt(raw, 10);
             return isNaN(n) ? raw : n;
         })();
-        var highlightAttemptsLeft = 20; // keep retrying briefly while Firestore data is still loading
+        var highlightAttemptsLeft = 30; // keep retrying while Firestore data is still loading
+        if (pendingHighlightItemId !== null) {
+            // Don't rely only on renderMenuGrid to call us: poll until the item is found.
+            setTimeout(function () { try { tryHighlightPendingItem(); } catch (e) {} }, 500);
+        }
 
         function tryHighlightPendingItem() {
             if (pendingHighlightItemId === null) return;
@@ -2358,6 +2362,15 @@
             for (var ti = 0; ti < menuItems.length; ti++) {
                 if (menuItems[ti].id === pendingHighlightItemId) { targetItem = menuItems[ti]; break; }
             }
+            if (targetItem && targetItem.cat === 'deals' && (!isDealsActiveNow() || !dealTimeActive(targetItem))) {
+                pendingHighlightItemId = null;
+                showToast(flvL('This deal is not available at this time.', 'Ye deal abhi available nahi hai.'));
+                return;
+            }
+            if (targetItem) {
+                var sb = document.getElementById('search-box');
+                if (sb && sb.value) { sb.value = ''; currentCategory = targetItem.cat; renderNavCategories(); renderMenuGrid(); return; }
+            }
             if (targetItem && currentCategory !== targetItem.cat) {
                 currentCategory = targetItem.cat;
                 renderNavCategories();
@@ -2369,11 +2382,19 @@
             if (card) {
                 var id = pendingHighlightItemId;
                 pendingHighlightItemId = null;
+                var focusCard = function () {
+                    var c = document.querySelector('[data-item-id="' + id + '"]') || card;
+                    try { c.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch (e) {}
+                    c.classList.add('deep-link-highlight');
+                };
+                // Scroll again a couple of times: images/menu refresh can shift the layout.
+                setTimeout(focusCard, 150);
+                setTimeout(focusCard, 900);
+                setTimeout(focusCard, 2000);
                 setTimeout(function () {
-                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    card.classList.add('deep-link-highlight');
-                    setTimeout(function () { card.classList.remove('deep-link-highlight'); }, 2600);
-                }, 150);
+                    var c = document.querySelector('[data-item-id="' + id + '"]');
+                    if (c) c.classList.remove('deep-link-highlight');
+                }, 4500);
                 return;
             }
 
@@ -2383,6 +2404,7 @@
                 setTimeout(tryHighlightPendingItem, 400);
             } else {
                 pendingHighlightItemId = null;
+                showToast(flvL('This item is not available right now.', 'Ye item abhi available nahi hai.'));
             }
         }
 
