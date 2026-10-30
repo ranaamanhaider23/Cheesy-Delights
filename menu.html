@@ -629,8 +629,14 @@
         lastDealSig = sig;
     }, 30000);
 
+    function isSizeOOS(item, size) { return !!(item && item.sizeOOS && item.sizeOOS.indexOf(size) !== -1); }
+    function allSizesOOS(item) {
+        if (!item || !item.prices || !item.sizeOOS || !item.sizeOOS.length) return false;
+        return Object.keys(item.prices).every(function (k) { return item.sizeOOS.indexOf(k) !== -1; });
+    }
+
     function renderItemCard(item) {
-        var isOOS = !!item.outOfStock;
+        var isOOS = !!item.outOfStock || allSizesOOS(item);
         var photoHtml = item.image
             ? '<img class="item-photo" src="' + item.image + '" alt="' + escapeHtml(item.name) + '">'
             : '<div class="no-photo-fallback">🧀</div>';
@@ -646,7 +652,9 @@
             priceHtml = '<div class="item-variants">' + vOrder.filter(function (v) {
                 return v in item.prices;
             }).map(function (v) {
-                return escapeHtml(v) + ': <b>Rs. ' + item.prices[v] + '</b>';
+                return isSizeOOS(item, v)
+                    ? '<span style="opacity:.55;text-decoration:line-through;">' + escapeHtml(v) + ': Rs. ' + item.prices[v] + '</span> <b style="color:#ff4d4d;font-size:.72em;">Out of Stock</b>'
+                    : escapeHtml(v) + ': <b>Rs. ' + item.prices[v] + '</b>';
             }).join('<br>') + '</div>';
         } else {
             priceHtml = '<div class="item-price">Rs. ' + Number(item.price || 0).toLocaleString() + '</div>';
