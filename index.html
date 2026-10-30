@@ -843,6 +843,8 @@
                     </div>
                     <div style="font-size:0.68rem; color:var(--text-muted); text-align:left; margin:4px 0 6px;">If something was changed from another device, tap "Refresh List" to show the latest here.</div>
 
+                    <input type="text" class="input-admin" id="admin-item-search" placeholder="&#128269; Search item (e.g. Zinger, Pizza)" oninput="filterAdminItems()" style="margin-bottom:6px;">
+                    <div id="admin-item-search-empty" style="display:none;font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">No item found.</div>
                     <div class="modal-body-scroll" id="admin-price-list" style="max-height:40vh;"></div>
 
                     <button class="checkout-btn" style="background:var(--green); color:#fff; margin-bottom:4px;" onclick="savePricesToStorage()">
@@ -1140,7 +1142,14 @@
                 })));
             } catch (e) { console.warn('Local menu cache not saved', e); }
         }
-        var ITEM_OPTIONAL_FIELDS = ['description', 'flavors', 'choices', 'pick', 'mix', 'fav', 'outOfStock', 'components', 'price', 'prices', 'priceOrder', 'timeStart', 'timeEnd'];
+        var ITEM_OPTIONAL_FIELDS = ['description', 'flavors', 'choices', 'pick', 'mix', 'fav', 'outOfStock', 'components', 'price', 'prices', 'priceOrder', 'timeStart', 'timeEnd', 'sizeOOS'];
+
+        // Per-size stock: item.sizeOOS = ['Small', ...] lists sizes that are out of stock.
+        function isSizeOOS(item, size) { return !!(item && item.sizeOOS && item.sizeOOS.indexOf(size) !== -1); }
+        function allSizesOOS(item) {
+            if (!item || !item.prices || !item.sizeOOS || !item.sizeOOS.length) return false;
+            return Object.keys(item.prices).every(function (k) { return item.sizeOOS.indexOf(k) !== -1; });
+        }
         function menuItemData(it) {
             var d = JSON.parse(JSON.stringify(it));
             ITEM_OPTIONAL_FIELDS.forEach(function (k) { if (!(k in d)) d[k] = firebase.firestore.FieldValue.delete(); });
@@ -2286,7 +2295,7 @@
 
                 shown++;
                 var card = document.createElement('div');
-                var isOOS = !!item.outOfStock;
+                var isOOS = !!item.outOfStock || allSizesOOS(item);
                 card.className = 'card' + (isOOS ? ' card-oos' : '') + (focusItemId !== null && item.id === focusItemId ? ' card-selected' : '');
                 card.setAttribute('data-item-id', item.id);
 
@@ -2321,11 +2330,15 @@
                     // Use the saved display order (priceOrder) rather than the object's
                     // own key order — Firestore doesn't guarantee map key order survives
                     // a round-trip, which is what made sizes swap rows after a refresh.
+                    var firstOkDone = false;
                     var custVOrder = (item.priceOrder && item.priceOrder.length) ? item.priceOrder : Object.keys(item.prices);
                     for (var cvi = 0; cvi < custVOrder.length; cvi++) {
                         var variant = custVOrder[cvi];
                         if (!(variant in item.prices)) continue;
-                        html += '<option value="' + escapeHtml(variant) + ':' + item.prices[variant] + '">' + escapeHtml(variant) + ' - Rs. ' + item.prices[variant] + '</option>';
+                        var vOut = isSizeOOS(item, variant);
+                        var vSel = (!vOut && !firstOkDone) ? ' selected' : '';
+                        if (!vOut) firstOkDone = true;
+                        html += '<option value="' + escapeHtml(variant) + ':' + item.prices[variant] + '"' + (vOut ? ' disabled' : '') + vSel + '>' + escapeHtml(variant) + ' - Rs. ' + item.prices[variant] + (vOut ? ' (Out of Stock)' : '') + '</option>';
                     }
                     html += '</select>' + flavorPickerHtml(item) + '</div>';
                     html += '<div class="card-footer"><span class="price">' + (isOOS ? '' : 'Select Option') + '</span>' + addBtnHtml + '</div>';
@@ -2472,6 +2485,7 @@
             if (foundItem.prices) {
                 var sel = document.getElementById('sel-' + id);
                 var parts = sel.value.split(':');
+                if (isSizeOOS(foundItem, parts[0])) { showToast(flvL('Sorry, this size is out of stock.', 'Maaf kijiye, ye size out of stock hai.')); return; }
                 itemName += ' (' + parts[0] + ')';
                 itemPrice = parseInt(parts[1]);
             }
@@ -3251,6 +3265,8 @@
                 var item = menuItems[i];
                 var box = document.createElement('div');
                 box.className = 'admin-price-item';
+                var catObj = flvFindCat(getCategories(), item.cat);
+                box.setAttribute('data-search', (String(item.name) + ' ' + (catObj ? catObj.label : item.cat) + ' ' + item.id).toLowerCase());
 
                 var html = '<div class="admin-price-title-row">' +
                     '<span class="admin-price-title">#' + item.id + '</span>' +
@@ -3343,6 +3359,7 @@
                 box.innerHTML = html;
                 container.appendChild(box);
             }
+            filterAdminItems();
         }
 
         function customRowHtml(c) {
@@ -3401,10 +3418,13 @@
 
         // One editable size-variant row: size NAME (e.g. "Small", "Medium", "14 inch")
         // and its price, both editable, plus a button to remove that size entirely.
-        function variantRowHtml(itemId, idx, label, price) {
+        function variantRowHtml(itemId, idx, label, price, oos) {
+            var it0 = menuItems.find(function (x) { return String(x.id) === String(itemId); });
+            if (oos === undefined) oos = isSizeOOS(it0, label);
             return '<div class="admin-variant-row" data-vidx="' + idx + '">' +
                 '<input type="text" class="input-admin variant-label-input" id="variant-label-' + itemId + '-' + idx + '" value="' + escapeHtml(label) + '" placeholder="Size name (e.g. Small)">' +
                 '<input type="number" class="input-admin variant-price-input" id="variant-price-' + itemId + '-' + idx + '" value="' + price + '" placeholder="Rs.">' +
+                '<button type="button" class="reset-btn" id="variant-stock-' + itemId + '-' + idx + '" onclick="toggleSizeStock(' + itemId + ', ' + idx + ')" title="Mark this size in/out of stock" style="width:auto;margin:0;padding:4px 7px;font-size:0.66rem;flex-shrink:0;' + (oos ? 'border-color:var(--red);color:var(--red);' : '') + '">' + (oos ? 'Out' : 'In stock') + '</button>' +
                 '<button type="button" class="variant-del-btn" onclick="removeVariantRow(' + itemId + ', ' + idx + ')" title="Remove this size">&times;</button>' +
             '</div>';
         }
@@ -3737,6 +3757,52 @@
             showToast(item.outOfStock ? 'Item marked Out of Stock.' : 'Item marked In Stock again.');
         }
 
+        // Mark one size (e.g. "Small") in/out of stock. Every other item that has a size
+        // with the same name (all your pizzas, say) is switched at the same time.
+        function toggleSizeStock(itemId, idx) {
+            var item = menuItems.find(function (it) { return String(it.id) === String(itemId); });
+            var inp = document.getElementById('variant-label-' + itemId + '-' + idx);
+            if (!item || !inp) return;
+            var size = inp.value.trim().replace(/:/g, '');
+            if (!size || !item.prices || !(size in item.prices)) { showToast('Save the size first, then mark its stock.'); return; }
+            var makeOut = !isSizeOOS(item, size);
+            var targets = menuItems.filter(function (it) { return it.prices && (size in it.prices); });
+            var apply = function () {
+                targets.forEach(function (it) {
+                    var list = (it.sizeOOS || []).filter(function (z) { return z !== size; });
+                    if (makeOut) list.push(size);
+                    if (list.length) it.sizeOOS = list; else delete it.sizeOOS;
+                });
+                saveMenuLocal();
+                if (db) {
+                    var b = db.batch();
+                    targets.forEach(function (it) { batchWriteMenuItem(b, it); });
+                    b.commit().catch(function (err) { console.warn(err); showToast('Saved on this device only (offline?).'); });
+                }
+                var q = (document.getElementById('admin-item-search') || {}).value;
+                renderAdminPriceEditor();
+                renderMenuGrid();
+                showToast('"' + size + '" ' + (makeOut ? 'marked Out of Stock' : 'back In Stock') + ' on ' + targets.length + ' item(s).');
+            };
+            if (targets.length > 1) {
+                showConfirm('Mark size "' + size + '" as ' + (makeOut ? 'OUT of stock' : 'IN stock') + ' for all ' + targets.length + ' items that have this size (' +
+                    targets.slice(0, 6).map(function (t) { return t.name; }).join(', ') + (targets.length > 6 ? ', ...' : '') + ')?', apply);
+            } else apply();
+        }
+
+        function filterAdminItems() {
+            var q = ((document.getElementById('admin-item-search') || {}).value || '').trim().toLowerCase();
+            var boxes = document.querySelectorAll('#admin-price-list .admin-price-item');
+            var shown = 0;
+            Array.prototype.forEach.call(boxes, function (b) {
+                var ok = !q || (b.getAttribute('data-search') || '').indexOf(q) !== -1;
+                b.style.display = ok ? '' : 'none';
+                if (ok) shown++;
+            });
+            var nf = document.getElementById('admin-item-search-empty');
+            if (nf) nf.style.display = (q && !shown) ? 'block' : 'none';
+        }
+
         function toggleItemBestSeller(id) {
             var item = menuItems.find(function(it) { return String(it.id) === String(id); });
             if (!item) return;
@@ -3847,6 +3913,10 @@
                         if (Object.keys(newPrices).length > 0) {
                             item.prices = newPrices;
                             item.priceOrder = newPriceOrder;
+                            if (item.sizeOOS) {
+                                item.sizeOOS = item.sizeOOS.filter(function (z) { return z in newPrices; });
+                                if (!item.sizeOOS.length) delete item.sizeOOS;
+                            }
                         }
                     }
                 } else {
